@@ -4,6 +4,7 @@ import {
   deleteProduct,
   deleteUser,
   getAllConversation,
+  getDeletedMessages,
   getFavoriteProduct,
   getUser,
   getUserChats,
@@ -36,5 +37,6 @@ router.post("/userAddProduct", getUserProducts);
 router.get("/getUserChats", authenticateToken, admin, getUserChats);
 router.get("/getFavorites", authenticateToken, admin, getFavoriteProduct);
 router.delete("/deleteUser", authenticateToken, admin, deleteUser);
+router.delete("/deletedMessages", authenticateToken, admin, getDeletedMessages);
 
 export default router;

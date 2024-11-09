@@ -1,7 +1,8 @@
 import express from "express";
-import { deleteMessage, getMessages, sendMessage } from "../controller/chat.js";
+import { deleteMessage, forwardMessage, getMessages, sendMessage } from "../controller/chat.js";
 import authenticateUser from "../auth/middle.js";
 import multer from "multer";
+import { io } from "socket.io-client";
 
 const router = express.Router();
 
@@ -15,5 +16,7 @@ router.post("/conversation", upload.single("image"), sendMessage);
 router.get("/getMessage", getMessages);
 
 router.delete("/deleteMessage", authenticateUser, deleteMessage);
+
+router.post("/forWordMessage", forwardMessage);
 
 export default router;

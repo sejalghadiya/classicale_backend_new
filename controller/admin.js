@@ -300,39 +300,86 @@ export const getFavoriteProduct = async (req, res) => {
 
 export const deleteUser = async (req, res) => {
   try {
-    const userId = parseInt(req.params.userId, 10); // The ID of the user to delete
-    const adminId = req.user.userId; // The ID of the logged-in admin (populated from JWT or session)
+    // Verify that the requesting user is an admin
+    const { userId, adminId } = req.body;
+    
+    
+    
 
-    // Check if userId is valid
-    if (!userId) {
-      return res.status(400).json({ message: "Invalid user ID" });
+    console.log("User Object", userId);
+
+    // Check if userObjectId is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid ObjectId format" });
     }
 
-    // Check if the logged-in user is an admin
-    const adminUser = await UserModel.findOne({ userId: adminId });
+    console.log(
+      `Admin ${adminId} is attempting to delete user with ObjectId ${userId}`
+    );
 
-    if (!adminUser || !adminUser.isAdmin) {
-      // Assuming `isAdmin` is a field in the user model
-      return res
-        .status(403)
-        .json({ message: "Access denied. Admin privileges required." });
-    }
-
-    // Find the user to delete by userId
-    const userToDelete = await UserModel.findOne({ userId });
+    // Find the user to delete by ObjectId
+    const userToDelete = await UserModel.findById(userId);
 
     if (!userToDelete) {
-      // If user not found, return 404 status with a message
+      // If user not found, return 404 status
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Delete the user from the database
-    await UserModel.deleteOne({ userId });
+    // Delete the user from the database by ObjectId
+    await UserModel.deleteOne({ _id: userId });
 
-    // Return success message
-    return res.status(200).json({ message: "User deleted successfully" });
+    // Return success message with admin and user details
+    return res.status(200).json({
+      message: `Admin ${adminId} successfully deleted user with ObjectId ${userId}`,
+    });
   } catch (err) {
-    console.error(err);
+    console.error("Error in deleteUser:", err);
     return res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+
+
+
+const ObjectId = mongoose.Types.ObjectId;
+export const getDeletedMessages = async (req, res) => {
+  const { messageId } = req.body; // Expecting messageId in the request body
+ 
+  // Check if messageId is provided
+  if (!messageId) {
+    return res.status(400).json({
+      success: false,
+      error: "Message ID is required.",
+    });
+  }
+
+  try {
+    // Ensure messageId is a valid ObjectId
+    const messageObjectId = new ObjectId(messageId);
+
+    // Find and delete the message by messageId
+    const result = await CommunicateModel.updateOne(
+      { "messages._id": messageObjectId },
+      { $pull: { messages: { _id: messageObjectId } } } // This removes the message with the specified ID
+    );
+
+    // Check if any document was modified
+    if (result.modifiedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Message not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Message deleted successfully.",
+    });
+  } catch (error) {
+    console.error("Error deleting message:", error);
+    res.status(500).json({
+      success: false,
+      error: "An error occurred while deleting the message.",
+    });
   }
 };

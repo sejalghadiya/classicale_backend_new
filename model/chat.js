@@ -37,7 +37,7 @@ const CommunicateSchema = new mongoose.Schema({
       },
       receiverId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Product",
+        ref: "User",
       },
       text: {
         type: String,

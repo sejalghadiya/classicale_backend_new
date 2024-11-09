@@ -1,23 +1,23 @@
-const WebSocket = require("ws");
+import { io } from "socket.io-client";
 
-const wss = new WebSocket.Server({ port: 3000 });
+const socket = io("http://localhost:3000");
 
-wss.on("connection", (ws) => {
-  console.log("Client connected.");
+socket.on("connect", () => {
+  console.log("Connected to server:", socket.id);
 
-  // Listen for messages from the client
-  ws.on("message", (message) => {
-    const parsedMessage = JSON.parse(message);
+  // Join the user room by ID for receiving messages
+  const userId = "someUserId"; // Replace with actual user ID
+  socket.emit("joinRoom", userId);
+});
 
-    // Broadcast the message to all connected clients
-    wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(parsedMessage));
-      }
-    });
-  });
+socket.on("messageSent", (message) => {
+  console.log("Message sent:", message);
+});
 
-  ws.on("close", () => {
-    console.log("Client disconnected.");
-  });
+socket.on("messageReceived", (message) => {
+  console.log("New message received:", message);
+});
+
+socket.on("notification", (notification) => {
+  console.log("Notification:", notification);
 });

@@ -22,8 +22,6 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Create HTTP server
 const server = http.createServer(app);
 // Create Socket.IO server
 export const io = new Server(server, {
@@ -47,18 +45,18 @@ mongoose
     console.error("Error connecting to the database:", err);
   });
 
-// Function to create an admin if not exists
+
 async function createAdminIfNotExists() {
   try {
     const adminExists = await Admin.findOne({ role: "admin" });
 
     if (!adminExists) {
-      const hashedPassword = await bcrypt.hash("admin123", 10); // Default password
+      const hashedPassword = await bcrypt.hash("admin123", 10); 
       const admin = new Admin({
         username: "admin",
         email: "admin@example.com",
         password: hashedPassword,
-        role: "admin", // Ensure the role is 'admin'
+        role: "admin", 
       });
 
       await admin.save();
@@ -71,28 +69,23 @@ async function createAdminIfNotExists() {
   }
 }
 
-// Register routes
-app.use("/api/admin", AdminRouter); // Register admin routes
+app.use("/api/admin", AdminRouter); 
 app.use("/api/user", UserRouter);
 app.use("/api/products", ProductRouter);
 app.use("/api/chat", CommunicateRouter);
 app.use("/api/conversation", ConversationRouter);
 
-// Socket.IO connection handling
 io.on("connection", (socket) => {
   
   console.log("User connected-----:", socket.id);
 
-  // Join a conversation room
   socket.on("joinRoom", (conversationId) => {
     socket.join(conversationId);
     console.log("Conversation:-------", conversationId);
   });
-
-  // Listen for sendMessage event
 });
 
-// Start the server
+
 server.listen(PORT, () => {
   console.log(`Server is running at http://localhost:${PORT}`);
 });
