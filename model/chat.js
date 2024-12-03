@@ -26,15 +26,15 @@ const CommunicateSchema = new mongoose.Schema({
       id: {
         type: mongoose.Types.ObjectId,
       },
-      deleted: { type: Boolean, default: false },
       senderName: {
         type: String,
       },
       senderId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
-        required: true, // senderId is required
+        required: true,
       },
+      deletedBy: { type: [mongoose.Schema.Types.ObjectId], default: [] },
       receiverId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
@@ -45,6 +45,9 @@ const CommunicateSchema = new mongoose.Schema({
       image: {
         type: String,
       },
+      isDeleted: { type: Boolean, default: false },
+      isRead: { type: Boolean, default: false },
+
       createdTime: {
         type: Date,
         default: Date.now,

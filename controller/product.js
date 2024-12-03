@@ -7,7 +7,7 @@ dotenv.config();
 
 // This line sets up multer to expect multiple files with the key 'images[]'
 
-export const addProduct = async (req, res) => {
+export const addProduct11 = async (req, res) => {
   try {
     // Log the user ID being passed
     console.log("User ID from request:", req.user._id);
@@ -52,7 +52,7 @@ export const addProduct = async (req, res) => {
   }
 };
 
-export const addProduct11 = async (req, res) => {
+export const addProduct = async (req, res) => {
   try {
     // Log the user ID being passed
     console.log("User ID from request:", req.user._id);
@@ -64,10 +64,8 @@ export const addProduct11 = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Process multiple images
-    const images = req.files
-      ? req.files.map((file) => file.buffer.toString("base64"))
-      : [];
+    // Process multiple image
+    const image = req.file ? req.file.buffer.toString("base64") : undefined;
 
     // Create new product
     const newProduct = new ProductModel({
@@ -76,7 +74,7 @@ export const addProduct11 = async (req, res) => {
       addProductUserId: user._id,
       userName: user.firstName,
       userEmail: user.email,
-      images: images, // Save the array of images
+      image: image, // Save the array of images
       createdTime: Date.now(),
       updatedTime: Date.now(),
     });
@@ -100,11 +98,10 @@ export const addProduct11 = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
 export const showProduct = async (req, res) => {
   try {
     const products = await ProductModel.find();
-    console.log(products);
+    console.log(200);
     res.status(200).json(products);
   } catch (error) {
     console.error("Error fetching products:", error);
@@ -112,7 +109,7 @@ export const showProduct = async (req, res) => {
   }
 };
 
-export const updateProduct = async (req, res) => {
+export const updateProduct12 = async (req, res) => {
   try {
     const userId = req.user.userId;
     const { productId } = req.body;
@@ -227,6 +224,68 @@ export const updateProduct = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
+export const updateProduct = async (req, res) => {
+  try {
+    const userId = req.body;
+    const { productId, ...updates } = req.body;
+
+    console.log(`Updating Product ID: ${productId} for User ID: ${userId}`);
+
+    // Validate productId
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      return res.status(400).json({ message: "Invalid Product ID" });
+    }
+
+    // Find the existing product by productId and userId
+    const existingProduct = await ProductModel.findOne({
+      _id: productId,
+      userId: userId,
+    });
+
+    if (!existingProduct) {
+      return res.status(404).json({
+        message: "Product not found or you are not authorized to update it.",
+      });
+    }
+
+    // Capture the old product state
+    const oldProduct = { ...existingProduct.toObject() };
+
+    // Update only the fields provided in the request
+    for (const key of Object.keys(updates)) {
+      if (updates[key] !== undefined && existingProduct[key] !== updates[key]) {
+        const oldKey = `old${key.charAt(0).toUpperCase() + key.slice(1)}`;
+        existingProduct[oldKey] = oldProduct[key]; // Store old value
+        existingProduct[key] = updates[key]; // Update to new value
+      }
+    }
+
+    // Update the updatedTime field
+    existingProduct.updatedTime = Date.now();
+
+    // Save the updated product
+    await existingProduct.save();
+
+    // Ensure the user has this product ID in their document
+    await UserModel.findByIdAndUpdate(
+      userId,
+      { $addToSet: { productIds: productId } },
+      { new: true }
+    );
+
+    return res.status(200).json({
+      message: "Product updated successfully",
+      productId: productId,
+      oldProduct: oldProduct,
+      newProduct: existingProduct.toObject(),
+    });
+  } catch (err) {
+    console.error("Error updating product:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 
 export const addFavoriteProduct = async (req, res) => {
   try {

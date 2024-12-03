@@ -20,6 +20,7 @@ import crypto from "crypto";
 
 const ERROR_MESSAGES = {
   MISSING_FIRST_NAME: "First name is required",
+  MISSING_MIDDLE_NAME: "Middle name is required",
   MISSING_LAST_NAME: "Last name is required",
   MISSING_GENDER: "Gender is required",
   MISSING_DATE_OF_BIRTH: "Date of Birth is required",
@@ -34,85 +35,215 @@ const ERROR_MESSAGES = {
   SELECTED_VALUES: "Please select a value",
 };
 
-// Regex for validating the email address
-const EMAIL_REGEX =
-  /^(?=.*[!@#$%^&*])(?=.*\d)[A-Za-z\d!@#$%^&*]+@[A-Za-z\d.-]+\.[A-Za-z]{2,}$/;
-
-export const userSignUp = async (req, res) => {
+export const userSignUp12 = async (req, res) => {
   try {
+    // Fetch the latest user based on userId
     const latestUser = await UserModel.findOne({}).sort({ userId: -1 });
+
+    // Determine the next userId
     let nextUserId = 1;
-    if (latestUser) {
+    if (latestUser && !isNaN(latestUser.userId)) {
       nextUserId = latestUser.userId + 1;
     }
 
     const {
       firstName,
+      middleName,
       lastName,
       gender,
       dateOfBirth,
       password,
       Location,
       occupation,
+      otherOccupation,
       email,
       phone,
       both,
-      countryCode, // Accept countryCode from request
+      countryCode,
       role,
       country,
-      city, // Added role field
+      city,
+      image, // Accept base64 image string if sent
     } = req.body;
 
     const userRole = role || "user";
 
-    if (!EMAIL_REGEX.test(email)) {
-      return res.status(400).json({ message: "Invalid Email Format" });
-    }
-
+    // Check if the user already exists
     const existingUser = await UserModel.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
 
+    // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Combine countryCode and phone into one field, or store them separately
+    // Handle image (file or base64)
+    let finalImage;
+    if (req.file) {
+      // Image from file upload
+      finalImage = req.file.buffer.toString("base64");
+    } else if (image) {
+      // Image from base64 string in the body
+      finalImage = image;
+    } else {
+      return res.status(400).json({ message: "Image is required" });
+    }
+
+    // Create a new user with the provided data
     const userData = new UserModel({
       userId: nextUserId,
       firstName,
+      middleName,
       lastName,
       gender,
       dateOfBirth,
       password: hashedPassword,
       Location,
       occupation,
+      otherOccupation,
       email,
-      phone: `${phone}`, // Combine country code and phone number
+      phone,
       both,
       country,
       city,
-      countryCode, // Store the country code separately if needed
+      countryCode,
       role: userRole,
-      image: req.file ? req.file.buffer.toString("base64") : undefined,
+      image: finalImage, // Save the base64 image
     });
 
+    // Save the user data in the database
     await userData.save();
 
-    console.log(userData);
-    console.log(
-      "****************************************************************"
-    );
-
+    // Generate a JWT token for the user
     const token = jwt.sign(
       { id: userData._id, email: userData.email, role: userData.role },
       "ClassicalProject",
       { expiresIn: "1h" }
     );
 
-    userData.token = token;
+    return res.status(200).json({
+      message: "User signed up successfully!",
+      user: {
+        ...userData.toObject(),
+        image: userData.image,
+      },
+      token,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+export const userSignUp = async (req, res) => {
+  try {
+    // Fetch the latest user based on userId
+    const latestUser = await UserModel.findOne({}).sort({ userId: -1 });
+
+    // Determine the next userId
+    let nextUserId = 1;
+    if (latestUser && !isNaN(latestUser.userId)) {
+      nextUserId = latestUser.userId + 1;
+    }
+
+    const {
+      firstName,
+      middleName,
+      lastName,
+      gender,
+      dateOfBirth,
+      password,
+      Location,
+      occupation,
+      otherOccupation,
+      email,
+      phone,
+      both,
+      countryCode,
+      role,
+      country,
+      city,
+    } = req.body;
+
+    const userRole = role || "user";
+
+    // Check if the user already exists
+    const existingUser = await UserModel.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Handle images
+    let profileImage, proofOneImage, proofTwoImage;
+
+    if (req.files?.image?.[0]) {
+      profileImage = req.files.image[0].buffer.toString("base64"); // Profile image
+    } else {
+      return res.status(400).json({ message: "Profile image is required" });
+    }
+
+    if (req.files?.aadhaarFrontImage?.[0]) {
+      proofOneImage = req.files.aadhaarFrontImage[0].buffer.toString("base64"); // Proof image
+    } else {
+      return res
+        .status(400)
+        .json({ message: "Aadhaar/proof image is required" });
+    }
+
+    if (req.files?.aadhaarBackImage?.[0]) {
+      proofTwoImage = req.files.aadhaarBackImage[0].buffer.toString("base64"); // Proof image
+    } else {
+      return res
+        .status(400)
+        .json({ message: "Aadhaar/proof image is required" });
+    }
+
+    // Create a new user
+    const userData = new UserModel({
+      userId: nextUserId,
+      firstName,
+      middleName,
+      lastName,
+      gender,
+      dateOfBirth,
+      password: hashedPassword,
+      Location,
+      occupation,
+      otherOccupation,
+      email,
+      phone,
+      both,
+      country,
+      city,
+      countryCode,
+      role: userRole,
+      profileImage, // Save the base64 profile image
+      proofOneImage,
+      proofTwoImage, // Save the base64 proof image
+    });
+
+    // Save the user data
     await userData.save();
 
-    return res.status(201).json({ user: userData, token });
+    // Generate a JWT token
+    const token = jwt.sign(
+      { id: userData._id, email: userData.email, role: userData.role },
+      "ClassicalProject",
+      { expiresIn: "1h" }
+    );
+
+    return res.status(200).json({
+      message: "User signed up successfully!",
+      user: {
+        ...userData.toObject(),
+        profileImage: undefined, // Do not send sensitive data in the response
+        proofImage: undefined, // Do not send sensitive data in the response
+      },
+      token,
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Something went wrong" });
@@ -144,7 +275,7 @@ export const userLogin = async (req, res) => {
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
       "classicalProject", // Ensure this matches your secret key
-      { expiresIn: "1h" }
+      { expiresIn: "60d" }
     );
 
     await token.save;

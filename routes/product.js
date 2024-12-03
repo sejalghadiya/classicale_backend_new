@@ -18,8 +18,10 @@ const router = express.Router();
 const memoryStorage = multer.memoryStorage();
 const upload = multer({ storage: memoryStorage });
 
-router.post("/add", upload.array("image"), authenticateUser, addProduct);
+router.post("/add", upload.single('image'), authenticateUser, addProduct);
+
 router.get("/showProduct", showProduct);
+
 router.put("/update", authenticateUser, updateProduct);
 router.post("/favorites", authenticateUser, addFavoriteProduct);
 router.get("/getFavoriteProduct", authenticateUser, getFavoriteProducts);

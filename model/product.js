@@ -64,7 +64,7 @@ const ProductSchema = new mongoose.Schema({
   oldModel: {
     type: String,
   },
-  images: { type: [String], required: true },
+  image: { type: String},
   oldImage: {
     type: String,
   },
@@ -78,7 +78,7 @@ const ProductSchema = new mongoose.Schema({
   },
   productType: {
     type: String,
-    enum: ["Car", "Bike", "Phone", "Property", "Other"],
+    enum: ["Car", "Bike", "Phone", "Property", "Other","Pets"],
   },
   subProductType: {
     type: [String],

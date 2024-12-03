@@ -4,6 +4,12 @@ const UserSchema = new mongoose.Schema({
   //favorites: [{ type: String }],
   favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: "Product" }],
   chatList: [{ type: mongoose.Schema.Types.ObjectId, ref: "Conversation" }],
+  fcmToken: {
+    type: String,
+    required: false,
+  },
+  aadhaarFrontImage: { type: String }, // Aadhaar front image as base64
+  aadhaarBackImage: { type: String },
   userId: {
     type: Number,
     unique: true,
@@ -14,6 +20,12 @@ const UserSchema = new mongoose.Schema({
   NewFirstName: {
     type: String,
   },
+  middleName: {
+    type: String,
+  },
+  NewMiddleName: {
+    type: String,
+  },
   lastName: {
     type: String,
   },
@@ -22,11 +34,11 @@ const UserSchema = new mongoose.Schema({
   },
   gender: {
     type: String,
-    enum: ["MALE", "FEMALE", "OTHER"],
+    enum: ["MALE", "FEMALE", "RATHER NOT TO SAY"],
   },
   NewGender: {
     type: String,
-    enum: ["MALE", "FEMALE", "OTHER"],
+    enum: ["MALE", "FEMALE", "RATHER NOT TO SAY"],
   },
   dateOfBirth: {
     type: String,
@@ -55,7 +67,14 @@ const UserSchema = new mongoose.Schema({
   occupation: {
     type: String,
   },
+  otherOccupation: {
+    type: String,
+  },
+
   NewOccupation: {
+    type: String,
+  },
+  NewOtherOccupation: {
     type: String,
   },
   email: {
@@ -64,9 +83,7 @@ const UserSchema = new mongoose.Schema({
   NewEmail: {
     type: String,
   },
-  image: {
-    type: String,
-  },
+  image: { type: String },
   NewImage: {
     type: String,
   },
@@ -78,6 +95,9 @@ const UserSchema = new mongoose.Schema({
   NewBoth: {
     type: String,
   },
+  profileImage: { type: String, required: true }, // Store base64 profile image
+  proofOneImage: { type: String, required: true },
+  proofTwoImage: { type: String, required: true }, // Store base64 proof image
   token: {
     type: String,
   },
