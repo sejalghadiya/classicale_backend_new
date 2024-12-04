@@ -11,18 +11,11 @@ import {
 import authenticateUser from "../auth/middle.js";
 
 const router = express.Router();
-const storage = multer.memoryStorage();
 
-const upload = multer({ storage });
+const memoryStorage = multer.memoryStorage();
+const upload = multer({ storage: memoryStorage });
 
-export const uploadMiddleware = upload.fields([
-  { name: "image", maxCount: 1 }, // Profile image
-  { name: "aadhaarFrontImage", maxCount: 1 },
-  { name: "aadhaarBackImage", maxCount: 1 }, // Aadhaar/proof image
-]);
-
-// Express route that handles user sign-up and image upload
-router.post("/signup", uploadMiddleware, userSignUp);
+router.post("/signup", upload.single("image"), userSignUp);
 
 router.post("/login", userLogin);
 

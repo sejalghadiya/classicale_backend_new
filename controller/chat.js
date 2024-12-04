@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
 import { CommunicateModel } from "../model/chat.js";
 import { io } from "socket.io-client";
-import { Socket } from "socket.io";
+
 const socket = io("http://localhost:3000");
-export const sendMessage12 = async (req, res) => {
+export const sendMessage22 = async (req, res) => {
   const { conversationId, senderId, receiverId, text } = req.body;
 
   console.log("Sending message", senderId);
@@ -140,7 +140,7 @@ export const sendMessage12 = async (req, res) => {
     });
   }
 };
-export const sendMessage22 = async (req, res) => {
+export const sendMessage = async (req, res) => {
   const { conversationId, senderId, receiverId, text } = req.body;
 
   console.log("Sending message", senderId);
@@ -280,8 +280,6 @@ export const sendMessage22 = async (req, res) => {
     });
   }
 };
-
-
 
 
 const ObjectId = mongoose.Types.ObjectId;
@@ -568,93 +566,6 @@ export const getMessages = async (req, res) => {
   } catch (err) {
     console.error("Error fetching messages:", err);
     res.status(500).send(err);
-  }
-};
-
-export const forwardMessage = async (req, res) => {
-  const { originalMessageId, newReceiverId, senderId } = req.body;
-
-  // Check if originalMessageId, newReceiverId, and senderId are present
-  if (!originalMessageId || !newReceiverId || !senderId) {
-    return res.status(400).json({
-      success: false,
-      error: "originalMessageId, newReceiverId, and senderId are required.",
-    });
-  }
-
-  try {
-    // Find the original message by originalMessageId
-    const originalMessage = await CommunicateModel.findOne({
-      "messages._id": originalMessageId,
-    });
-
-    // If original message doesn't exist, return an error
-    if (!originalMessage) {
-      return res.status(404).json({
-        success: false,
-        error: "Original message not found.",
-      });
-    }
-
-    // Extract message details
-    const messageDetails = originalMessage.messages.id(originalMessageId);
-
-    // Prepare the new message object
-    const forwardedMessage = {
-      _id: new mongoose.Types.ObjectId(), // Create a unique ID for the forwarded message
-      senderId,
-      text: messageDetails.text, // Forwarding the text of the original message
-      image: messageDetails.image, // Forwarding the image if exists
-      createdTime: new Date(), // Set created time to now
-      deleted: false, // Message is not deleted by default
-    };
-
-    // Find or create a conversation for the new receiver
-    let conversation = await CommunicateModel.findOne({
-      senderId: senderId,
-      receiverId: newReceiverId,
-    });
-
-    // If conversation doesn't exist, create a new one
-    if (!conversation) {
-      conversation = new CommunicateModel({
-        conversationId: new mongoose.Types.ObjectId(), // Create a new conversation ID
-        senderId,
-        receiverId: newReceiverId,
-        messages: [],
-      });
-    }
-
-    // Add the forwarded message to the conversation
-    conversation.messages.push(forwardedMessage);
-
-    // Save the conversation with the new forwarded message
-    await conversation.save();
-
-    // Emit the new message via Socket.IO to the new receiver
-    socket.emit("messageSent", senderId, forwardedMessage); // Notify sender
-    socket.emit("messageReceived", newReceiverId, forwardedMessage); // Notify new receiver
-
-    // Emit notifications for sender and new receiver
-    const notificationMessage = {
-      title: "Message Forwarded",
-      body: `Forwarded message from ${senderId}: ${messageDetails.text}`,
-    };
-
-    // Notify the new receiver if online
-    socket.emit("notification", newReceiverId, notificationMessage);
-
-    // Respond with the forwarded message details
-    res.status(200).json({
-      success: true,
-      message: forwardedMessage,
-    });
-  } catch (error) {
-    console.error("Error forwarding message:", error);
-    res.status(500).json({
-      success: false,
-      error: "An error occurred while forwarding the message.",
-    });
   }
 };
 

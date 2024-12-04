@@ -54,10 +54,7 @@ export const addProduct11 = async (req, res) => {
 
 export const addProduct = async (req, res) => {
   try {
-    // Log the user ID being passed
-    console.log("User ID from request:", req.user._id);
 
-    // Find the user based on userId
     const user = await UserModel.findOne({ userId: req.user.userId });
 
     if (!user) {
@@ -389,5 +386,3 @@ export const getProductsWithUserDetails = async (req, res) => {
   }
 };
 
-// Assuming you're using Express.js
-// controller/product.js
