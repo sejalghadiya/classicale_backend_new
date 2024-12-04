@@ -8,7 +8,8 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: false,
   },
-  aadhaarFrontImage: { type: String }, 
+  aadhaarFrontImage: { type: String },
+  aadhaarBackImage: { type: String },
   userId: {
     type: Number,
     unique: true,
@@ -80,7 +81,7 @@ const UserSchema = new mongoose.Schema({
     type: String,
   },
   image: {
-    type: String
+    type: String,
   },
   NewImage: {
     type: String,
@@ -93,7 +94,9 @@ const UserSchema = new mongoose.Schema({
   NewBoth: {
     type: String,
   },
-
+  profileImage: { type: String }, // Store base64 profile image
+  proofFrontImage: { type: String }, // Store base64 proof image
+  proofBackImage: { type: String },
   token: {
     type: String,
   },

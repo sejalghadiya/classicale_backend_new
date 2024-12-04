@@ -35,7 +35,7 @@ const ERROR_MESSAGES = {
   SELECTED_VALUES: "Please select a value",
 };
 
-export const userSignUp12 = async (req, res) => {
+export const userSignUp = async (req, res) => {
   try {
     // Fetch the latest user based on userId
     const latestUser = await UserModel.findOne({}).sort({ userId: -1 });
@@ -63,7 +63,6 @@ export const userSignUp12 = async (req, res) => {
       role,
       country,
       city,
-      image, // Accept base64 image string if sent
     } = req.body;
 
     const userRole = role || "user";
@@ -77,19 +76,31 @@ export const userSignUp12 = async (req, res) => {
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Handle image (file or base64)
-    let finalImage;
-    if (req.file) {
-      // Image from file upload
-      finalImage = req.file.buffer.toString("base64");
-    } else if (image) {
-      // Image from base64 string in the body
-      finalImage = image;
+    // Handle images
+    let profileImage, proofFrontImage, proofBackImage;
+
+    if (req.files?.image?.[0]) {
+      profileImage = req.files.image[0].buffer.toString("base64"); // Profile image
     } else {
-      return res.status(400).json({ message: "Image is required" });
+      return res.status(400).json({ message: "Profile image is required" });
     }
 
-    // Create a new user with the provided data
+    if (req.files?.aadhaarFrontImage?.[0]) {
+      proofFrontImage = req.files.aadhaarFrontImage[0].buffer.toString("base64"); // Proof image
+    } else {
+      return res
+        .status(400)
+        .json({ message: "Aadhaar/proof front image is required" });
+    }
+    if (req.files?.aadhaarBackImage?.[0]) {
+      proofBackImage = req.files.aadhaarBackImage[0].buffer.toString("base64"); // Proof image
+    } else {
+      return res
+        .status(400)
+        .json({ message: "Aadhaar/proof  back image is required" });
+    }
+
+    // Create a new user
     const userData = new UserModel({
       userId: nextUserId,
       firstName,
@@ -108,13 +119,15 @@ export const userSignUp12 = async (req, res) => {
       city,
       countryCode,
       role: userRole,
-      image: finalImage, // Save the base64 image
+      profileImage, // Save the base64 profile image
+      proofFrontImage,
+      proofBackImage
     });
 
-    // Save the user data in the database
+    // Save the user data
     await userData.save();
 
-    // Generate a JWT token for the user
+    // Generate a JWT token
     const token = jwt.sign(
       { id: userData._id, email: userData.email, role: userData.role },
       "ClassicalProject",
@@ -125,7 +138,6 @@ export const userSignUp12 = async (req, res) => {
       message: "User signed up successfully!",
       user: {
         ...userData.toObject(),
-        image: userData.image,
       },
       token,
     });
@@ -135,16 +147,14 @@ export const userSignUp12 = async (req, res) => {
   }
 };
 
-
-
-export const userSignUp = async (req, res) => {
+export const userSignUp112 = async (req, res) => {
   try {
     const latestUser = await UserModel.findOne({}).sort({ userId: -1 });
     let nextUserId = 1;
     if (latestUser) {
       nextUserId = latestUser.userId + 1;
     }
-const {
+    const {
       firstName,
       middleName,
       lastName,
@@ -194,7 +204,7 @@ const {
       city,
       countryCode,
       role: userRole,
-      image // Save the base64 profile image
+      image, // Save the base64 profile image
     });
 
     await userData.save();
@@ -216,7 +226,6 @@ const {
       },
       token,
     });
-
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Something went wrong" });
@@ -242,7 +251,7 @@ export const userLogin = async (req, res) => {
     }
 
     // Fetch all products added by the user
-    const products = await ProductModel.find({ userId: user.uId });
+   // const products = await ProductModel.find({ userId: user.uId });
 
     // Generate JWT token
     const token = jwt.sign(
@@ -267,6 +276,58 @@ export const userLogin = async (req, res) => {
   }
 };
 
+export const userLogin1 = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const user = await UserModel.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    // Generate token
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      "ClassicalProject",
+      { expiresIn: "1h" }
+    );
+
+    // Include all user data in the response
+    return res.status(200).json({
+      message: "Login successful",
+      token,
+      user: {
+        userId: user.userId,
+        firstName: user.firstName,
+        middleName: user.middleName,
+        lastName: user.lastName,
+        gender: user.gender,
+        dateOfBirth: user.dateOfBirth,
+        email: user.email,
+        phone: user.phone,
+        location: user.Location,
+        occupation: user.occupation,
+        otherOccupation: user.otherOccupation,
+        image: user.image,
+        proofFrontImage: user.aadhaarFrontImage, // Add Aadhaar Front
+        proofBackImage: user.aadhaarBackImage, // Add Aadhaar Back
+        country: user.country,
+        city: user.city,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Something went wrong" });
+  }
+};
 
 export const requestPasswordReset = async (req, res) => {
   try {

@@ -1,4 +1,7 @@
+
+
 console.log("Hello world!");
+
 
 // server.js
 
@@ -16,13 +19,11 @@ import CommunicateRouter from "./routes/chat.js";
 import ConversationRouter from "./routes/conversation.js";
 import AdminRouter from "./routes/admin.js";
 import Admin from "./model/admin.js"; // Import the admin model
-
+import { CommunicateModel } from "./model/chat.js";
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Create HTTP server
 const server = http.createServer(app);
 // Create Socket.IO server
 export const io = new Server(server, {
@@ -36,28 +37,30 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // MongoDB connection
-mongoose
-  .connect(process.env.MONGODB_URI || "mongodb://localhost:27017/classical", {})
-  .then(async () => {
-    console.log("Database connection successful!");
-    await createAdminIfNotExists(); // Create default admin if not already created
-  })
-  .catch((err) => {
-    console.error("Error connecting to the database:", err);
-  });
+const uri =
+  process.env.MONGODB_URI ||
+  "mongodb+srv://ttsnikol89:QONe2IT1Nel7X5HD@cluster0.rao1q.mongodb.net/classical?retryWrites=true&w=majority";
 
-// Function to create an admin if not exists
+mongoose
+  .connect(uri, {})
+  .then(() => console.log("Connected to MongoDB Atlas!"))
+  .catch((error) => console.error("Error connecting to MongoDB:", error));
+
+
+
+createAdminIfNotExists();
+
 async function createAdminIfNotExists() {
   try {
     const adminExists = await Admin.findOne({ role: "admin" });
 
     if (!adminExists) {
-      const hashedPassword = await bcrypt.hash("admin123", 10); // Default password
+      const hashedPassword = await bcrypt.hash("admin123", 10);
       const admin = new Admin({
         username: "admin",
         email: "admin@example.com",
         password: hashedPassword,
-        role: "admin", // Ensure the role is 'admin'
+        role: "admin",
       });
 
       await admin.save();
@@ -70,29 +73,64 @@ async function createAdminIfNotExists() {
   }
 }
 
-// Register routes
-app.use("/api/admin", AdminRouter); // Register admin routes
-app.use("/api/user", UserRouter);
+
 app.use("/api/products", ProductRouter);
+
+app.use("/api/admin", AdminRouter); 
+app.use("/api/user", UserRouter);
+
 app.use("/api/chat", CommunicateRouter);
 app.use("/api/conversation", ConversationRouter);
 
-// Socket.IO connection handling
 io.on("connection", (socket) => {
-  console.log("User connected-----:", socket.id);
+  console.log("User connected:", socket.id);
 
-  // Join a conversation room
+  // Join room based on conversationId
   socket.on("joinRoom", (conversationId) => {
     socket.join(conversationId);
-    console.log("Conversation:-------", conversationId);
+    console.log(`User joined conversation: ${conversationId}`);
   });
 
-  // Listen for sendMessage event
+  // Listen for message send event
+  socket.on("sendMessage", async (data) => {
+    const { conversationId, senderId, senderName, receiverId, text, image } =
+      data;
+
+    try {
+      const message = {
+        id: new mongoose.Types.ObjectId(),
+        senderId,
+        senderName,
+        receiverId,
+        text,
+        image,
+        createdTime: new Date(),
+      };
+
+      // Update the Communicate document with the new message
+      await CommunicateModel.findOneAndUpdate(
+        { conversationId },
+        { $push: { messages: message } },
+        { new: true, upsert: true } // Create if doesn't exist
+      );
+
+      // Emit the new message to all clients in the conversation room
+      io.to(conversationId).emit("receiveMessage", message);
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
+  });
 });
 
-// Start the server
+
+
 server.listen(PORT, () => {
   console.log(`Server is running at http://localhost:${PORT}`);
 });
 
 export default app;
+
