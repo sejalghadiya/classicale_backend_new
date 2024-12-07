@@ -92,115 +92,80 @@ io.on("connection", (socket) => {
     console.log(`User ${userId} added to the socket map`);
   });
 
-  socket.on("sendMessage", async (data) => {
-    const { conversationId, senderId, senderName, receiverId, text, image } = data;
+socket.on("sendMessage", async (data) => {
+  const { conversationId, senderId, senderName, receiverId, text, image } =
+    data;
 
-    try {
-      // Generate a new ObjectId for the message
-      const messageId = new mongoose.Types.ObjectId();
+  try {
+    // Validate the incoming data
+    if (!conversationId || !senderId || !receiverId) {
+      throw new Error(
+        "Missing required fields (conversationId, senderId, receiverId)."
+      );
+    }
 
-      const message = {
-        id: messageId,
+    // Create a message object
+    const messageId = new mongoose.Types.ObjectId();
+    const message = {
+      id: messageId,
+      senderId,
+      senderName,
+      receiverId,
+      text,
+      image, // Ensure this contains the image URL or metadata
+      createdTime: new Date(),
+      deletedBy: [],
+      isRead: false,
+    };
+
+    // Log message details
+    console.log("New message received:");
+    console.log("Text:", text || "No text message");
+    if (image) {
+      console.log("Image URL:", image);
+      console.log("Additional image metadata can be added here.");
+    } else {
+      console.log("No image included in this message.");
+    }
+
+    // Save message in the database
+    const conversation = await CommunicateModel.findOneAndUpdate(
+      { conversationId },
+      { $push: { messages: message } },
+      { new: true, upsert: true }
+    );
+
+    // Emit message back to sender and conversation participants
+    socket.emit("messageSent", message);
+    io.to(conversationId).emit("receiveMessage", message);
+
+    // Check if the receiver is online
+    const receiverSocketId = userSocketMap.get(receiverId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("newNotification", {
         senderId,
         senderName,
-        receiverId,
-        text,
-        image,
-        createdTime: new Date(),
-        deletedBy: [],
-        isRead: false, // Track read/unread status
-      };
-
-      // Save message in the database
-      const conversation = await CommunicateModel.findOneAndUpdate(
-        { conversationId },
-        { $push: { messages: message } },
-        { new: true, upsert: true }
-      );
-
-      // Emit the full message details back to the sender
-      socket.emit("messageSent", message);
-
-      // Emit the message to all users in the room
-      io.to(conversationId).emit("receiveMessage", message);
-      console.log("Message saved and sent:", messageId);
-
-      // Check if the receiver is online
-      const receiverSocketId = userSocketMap.get(receiverId);
-
-      if (receiverSocketId) {
-        // Receiver is online, send a notification
-        io.to(receiverSocketId).emit("newNotification", {
-          senderId: senderId,
-          senderName: senderName,
-          message: message.text,
-          createdTime: message.createdTime,
-          roomId: conversationId,
-        });
-        console.log("Notification sent to receiver:", receiverId);
-      } else {
-        // Receiver is offline, notify the sender about offline status
-        console.log("Receiver is offline, notifying sender.");
-        io.to(userSocketMap.get(senderId)).emit("receiverOffline", {
-          receiverId,
-          conversationId,
-        });
-
-        // Fetch receiver's FCM token from the database
-        const receiverFcmToken = await getUserFcmToken(receiverId); // Function to get FCM token
-
-        if (receiverFcmToken) {
-          // Push notification payload
-          const payload = {
-            notification: {
-              title: `New message from ${senderName}`,
-              body: text,
-            },
-            data: {
-              conversationId: conversationId.toString(),
-              senderId: senderId.toString(),
-            },
-          };
-
-          // Send push notification via Firebase
-          await admin.messaging().sendToDevice(receiverFcmToken, payload);
-          console.log("Push notification sent to receiver:", receiverId);
-        } else {
-          console.log("No FCM token found for receiver, notification not sent.");
-        }
-      }
-    } catch (error) {
-      console.error("Error saving message:", error);
-    }
-  });
-
-  socket.on("userOnline", async (userId) => {
-    try {
-      // Fetch missed messages from the database
-      const missedMessages = await CommunicateModel.find({
-        "messages.receiverId": userId,
-        "messages.isRead": false,
+        message: text || image,
+        createdTime: message.createdTime,
+        roomId: conversationId,
       });
-
-      // Emit missed messages to the user
-      socket.emit("missedMessages", missedMessages);
-      console.log(`Missed messages sent to user: ${userId}`);
-    } catch (error) {
-      console.error("Error fetching missed messages:", error);
-    }
-  });
-
-  socket.on("markMessagesAsRead", async ({ conversationId, userId }) => {
-    try {
-      await CommunicateModel.updateMany(
-        { conversationId, "messages.receiverId": userId },
-        { $set: { "messages.$[].isRead": true } }
+      console.log("Notification sent to receiver:", receiverId);
+    } else {
+      // Notify sender that the receiver is offline
+      io.to(userSocketMap.get(senderId)).emit("receiverOffline", {
+        receiverId,
+        conversationId,
+      });
+      console.log(
+        "Receiver is offline. Push notification logic can be added here."
       );
-      console.log(`Messages marked as read for user: ${userId}`);
-    } catch (error) {
-      console.error("Error marking messages as read:", error);
     }
-  });
+  } catch (error) {
+    console.error("Error saving message:", error.message);
+    socket.emit("messageError", { error: error.message });
+  }
+});
+
 
   // Handle disconnection
   socket.on("disconnect", () => {
