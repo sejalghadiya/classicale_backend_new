@@ -95,7 +95,7 @@ const UserSchema = new mongoose.Schema({
   NewBoth: {
     type: String,
   },
-  profileImage: { type: String, required: true }, // Store base64 profile image
+  //profileImage: { type: String, required: true }, // Store base64 profile image
   proofOneImage: { type: String, required: true },
   proofTwoImage: { type: String, required: true }, // Store base64 proof image
   token: {

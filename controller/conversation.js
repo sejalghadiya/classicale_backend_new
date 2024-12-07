@@ -81,7 +81,8 @@ export const createConversation = async (req, res) => {
       },
       conversation,
     });
-    console.log("receiverName:______", receiver.firstName);
+    console.log("receiverImage:------", receiver.image),
+      console.log("receiverName:______", receiver.firstName);
   } catch (error) {
     console.error("Error creating conversation:", error);
     res.status(500).json({

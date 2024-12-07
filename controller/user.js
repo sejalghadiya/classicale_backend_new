@@ -177,10 +177,10 @@ export const userSignUp = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Handle images
-    let profileImage, proofOneImage, proofTwoImage;
+    let image, proofOneImage, proofTwoImage;
 
     if (req.files?.image?.[0]) {
-      profileImage = req.files.image[0].buffer.toString("base64"); // Profile image
+      image = req.files.image[0].buffer.toString("base64"); // Profile image
     } else {
       return res.status(400).json({ message: "Profile image is required" });
     }
@@ -220,7 +220,8 @@ export const userSignUp = async (req, res) => {
       city,
       countryCode,
       role: userRole,
-      profileImage, // Save the base64 profile image
+      image,
+     // profileImage, // Save the base64 profile image
       proofOneImage,
       proofTwoImage, // Save the base64 proof image
     });
@@ -705,7 +706,7 @@ export const resetPassword33 = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-export const updateUser = async (req, res) => {
+export const updateUser12 = async (req, res) => {
   try {
     const userId = req.user.userId;
 
@@ -770,6 +771,100 @@ export const updateUser = async (req, res) => {
 
     console.log(existingUser.location);
     console.log("++++++++++++++++++++++++++++++++++++++++++++++++");
+    // Return a success response with both old and updated data
+    return res.status(200).json({
+      oldData: oldUserData,
+      newData: newData,
+      message: "User updated successfully",
+    });
+  } catch (err) {
+    console.error("Error updating user:", err);
+    return res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+export const updateUser = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // Find the existing user by userId
+    const existingUser = await UserModel.findOne({ userId });
+    if (!existingUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Store old data before updating
+    const oldUserData = {
+      firstName: existingUser.firstName,
+      middleName: existingUser.middleName,
+      lastName: existingUser.lastName,
+      gender: existingUser.gender,
+      dateOfBirth: existingUser.dateOfBirth,
+      location: existingUser.Location, // Ensure correct field casing
+      occupation: existingUser.occupation,
+      email: existingUser.email,
+      phone: existingUser.phone,
+      both: existingUser.both,
+      image: existingUser.image,
+      city: existingUser.city,
+      country: existingUser.country,
+      updatedAt: existingUser.updatedAt,
+      proofOneImage: existingUser.proofOneImage, // Store old proof images
+      proofTwoImage: existingUser.proofTwoImage, // Store old proof images
+    };
+
+    // Update user fields with new values from the request body
+    const updates = req.body;
+    for (let key in updates) {
+      if (updates[key] !== undefined && updates[key] !== null) {
+        existingUser[key] = updates[key];
+      }
+    }
+
+    // Handle profile image if provided (base64 string)
+    if (req.body.profileImage) {
+      existingUser.image = req.body.profileImage;
+    }
+
+    // Handle proof images if provided (base64 string)
+    if (req.body.proofOneImage) {
+      existingUser.proofOneImage = req.body.proofOneImage;
+    }
+    if (req.body.proofTwoImage) {
+      existingUser.proofTwoImage = req.body.proofTwoImage;
+    }
+
+    // If files are uploaded (for example, image files), handle them
+    if (req.file) {
+      existingUser.image = req.file.buffer.toString("base64"); // Update profile image with the file
+    }
+
+    // Update the `updatedAt` timestamp
+    existingUser.updatedAt = new Date().toISOString();
+
+    // Save the updated user data
+    await existingUser.save();
+
+    // Construct new data object after update
+    const newData = {
+      firstName: existingUser.firstName,
+      middleName: existingUser.middleName,
+      lastName: existingUser.lastName,
+      gender: existingUser.gender,
+      dateOfBirth: existingUser.dateOfBirth,
+      location: existingUser.Location, // Make sure location is reflected here
+      occupation: existingUser.occupation,
+      email: existingUser.email,
+      phone: existingUser.phone,
+      both: existingUser.both,
+      city: existingUser.city,
+      country: existingUser.country,
+      image: existingUser.image,
+      updatedAt: existingUser.updatedAt,
+      proofOneImage: existingUser.proofOneImage, // Return updated proofOneImage
+      proofTwoImage: existingUser.proofTwoImage, // Return updated proofTwoImage
+    };
+
     // Return a success response with both old and updated data
     return res.status(200).json({
       oldData: oldUserData,
