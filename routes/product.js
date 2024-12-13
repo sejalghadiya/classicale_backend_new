@@ -7,6 +7,7 @@ import {
   showProduct,
   updateProduct,
   getFavoriteProducts,
+  softDeleteProduct,
 } from "../controller/product.js";
 import { authenticateUser } from "../auth/middle.js";
 // In routes or other files
@@ -21,7 +22,7 @@ const upload = multer({ storage: memoryStorage });
 router.post("/add", upload.single('image'), authenticateUser, addProduct);
 
 router.get("/showProduct", showProduct);
-
+router.delete("/deleteProduct",authenticateUser, softDeleteProduct);
 router.put("/update", authenticateUser, updateProduct);
 router.post("/favorites", authenticateUser, addFavoriteProduct);
 router.get("/getFavoriteProduct", authenticateUser, getFavoriteProducts);

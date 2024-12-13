@@ -6,6 +6,8 @@ const ProductSchema = new mongoose.Schema({
     ref: "User", // Reference to the User model
     required: true,
   },
+  isDeleted: { type: Boolean, default: false }, // Field to mark the product as deleted
+  deletedAt: { type: Date, default: null },
   productId: {
     type: mongoose.Schema.Types.ObjectId,
   },
@@ -64,7 +66,7 @@ const ProductSchema = new mongoose.Schema({
   oldModel: {
     type: String,
   },
-  image: { type: String},
+  image: { type: String },
   oldImage: {
     type: String,
   },
@@ -78,7 +80,7 @@ const ProductSchema = new mongoose.Schema({
   },
   productType: {
     type: String,
-    enum: ["Car", "Bike", "Phone", "Property", "Other","Pets"],
+    enum: ["Car", "Bike", "Phone", "Property", "Other", "Pets"],
   },
   subProductType: {
     type: [String],

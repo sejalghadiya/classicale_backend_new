@@ -391,3 +391,90 @@ export const getProductsWithUserDetails = async (req, res) => {
 
 // Assuming you're using Express.js
 // controller/product.js
+export const softDeleteProduct12 = async (req, res) => {
+  try {
+    const { addProductUserId, productId } = req.body;
+
+    console.log(
+      `Soft Deleting Product ID: ${productId} for User ID: ${addProductUserId}`
+    );
+
+    // Validate the productId (check if it's a valid ObjectId)
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      return res.status(400).json({ message: "Invalid Product ID" });
+    }
+
+    // Validate userId (check if it's a valid ObjectId)
+    if (!mongoose.Types.ObjectId.isValid(addProductUserId)) {
+      return res.status(400).json({ message: "Invalid User ID" });
+    }
+
+    // Find the product by productId
+    const product = await ProductModel.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Check if the user who added the product is the same user requesting the deletion
+    if (product.addProductUserId.toString() !== addProductUserId) {
+      return res.status(403).json({
+        message: "You can only delete your own products.",
+      });
+    }
+
+    // Check if the user is an admin and prevent admin from deleting
+    const user = await UserModel.findById(addProductUserId);
+    if (user && user.role === "admin") {
+      return res.status(403).json({
+        message: "Admin is not allowed to soft delete products.",
+      });
+    }
+
+    // Mark the product as deleted (soft delete)
+    product.deleted = true;
+    product.deletedAt = new Date(); // Timestamp for soft delete
+
+    // Save the product with the soft delete flag
+    await product.save();
+
+    // Return a success message with product details
+    return res.status(200).json({
+      message: "Product successfully marked as deleted",
+      productId: productId,
+      deletedAt: product.deletedAt,
+    });
+  } catch (err) {
+    console.error("Error soft deleting product:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const softDeleteProduct = async (req, res) => {
+
+    try {
+      const { productId, addProductUserId } = req.body;
+    
+      // Find the product by its ID
+      const product = await ProductModel.findById(productId);
+      if (!product) {
+        return res.status(404).json({ message: 'Product not found' });
+      }
+
+      // Check if the user who owns the product is the one requesting the deletion
+      if (product.addProductUserId.toString() !== addProductUserId) {
+        return res.status(403).json({ message: 'You can only delete your own products.' });
+      }
+
+      // Mark the product as deleted (soft delete)
+      product.isDeleted = true;
+      product.deletedAt = new Date();
+
+      // Save the changes
+      await product.save();
+
+      return res.status(200).json({ message: 'Product successfully deleted' });
+    } catch (err) {
+      console.error('Error deleting product:', err);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+};
