@@ -5,93 +5,73 @@ import mongoose from "mongoose";
 
 dotenv.config();
 
-// This line sets up multer to expect multiple files with the key 'images[]'
-
-export const addProduct11 = async (req, res) => {
-  try {
-    // Log the user ID being passed
-    console.log("User ID from request:", req.user._id);
-
-    // Check if you're querying by the correct field (userId or _id)
-    const user = await UserModel.findOne({ userId: req.user.userId }); // Assuming userId is a number
-    // Using findById if userId is MongoDB _id
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // Create new product by copying all fields from req.body
-    const newProduct = new ProductModel({
-      ...req.body, // Spread all fields from req.body into the new product
-      userId: req.user.userId,
-      addProductUserId: user._id,
-      userName: user.firstName,
-      userEmail: user.email,
-      image: req.file ? req.file.buffer.toString("base64") : undefined,
-      createdTime: Date.now(),
-      updatedTime: Date.now(),
-    });
-
-    await newProduct.save();
-
-    // Increment productCount for the user
-    user.productCount += 1;
-    await user.save();
-
-    // Return response
-    res.status(201).json({
-      message: "Product added successfully",
-      productId: newProduct._id.toString(),
-      addProductUserId: user._id.toString(),
-      product: newProduct.toObject(),
-      productCount: user.productCount, // Return updated product count
-    });
-  } catch (error) {
-    console.error("Error adding product:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
-
 export const addProduct = async (req, res) => {
   try {
-    // Log the user ID being passed
-    console.log("User ID from request:", req.user._id);
+    console.log("User ID from request:", req.user.userId); // Ensure user data is available
 
-    // Find the user based on userId
+    // 1. Fetch user details based on userId passed through the token
     const user = await UserModel.findOne({ userId: req.user.userId });
-
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Process multiple image
-    const image = req.file ? req.file.buffer.toString("base64") : undefined;
+    // 2. Ensure an image file is uploaded
+    // if (!req.files) {
+    //   return res.status(400).json({ message: "No image uploaded" });
+    // }
 
-    // Create new product
+    // 3. Construct the image path
+    // const imagePath = /images/${req.file.filename};
+
+    const images = [];
+    req.files.forEach((image) => {
+      // Assuming 'image.filename' is the file name of the uploaded image
+      images.push(`/images/${image.filename}`);
+    });
+
+    // 4. Extract product details from the request body
+    const {
+      title,
+      brand,
+      year,
+      description,
+      model,
+      categories,
+      price,
+      productType,
+      subProductType,
+    } = req.body;
+
+    // 5. Create a new product with userId and addProductUserId set
     const newProduct = new ProductModel({
-      ...req.body, // Spread all fields from req.body into the new product
-      userId: req.user.userId,
-      addProductUserId: user._id,
-      userName: user.firstName,
-      userEmail: user.email,
-      image: image, // Save the array of images
+      title,
+      brand,
+      year,
+      description,
+      model,
+      categories,
+      price,
+      productType,
+      subProductType,
+      images: images, // Add the uploaded image path
+      userId: req.user.userId, // Passed from token/user middleware
+      addProductUserId: user._id, // User's database _id
       createdTime: Date.now(),
       updatedTime: Date.now(),
     });
 
+    // 6. Save the product to the database
     await newProduct.save();
 
-    // Increment productCount for the user
+    // 7. Increment the product count for the user
     user.productCount += 1;
     await user.save();
 
-    // Return response
+    // 8. Return the response
     res.status(201).json({
       message: "Product added successfully",
-      productId: newProduct._id.toString(),
-      addProductUserId: user._id.toString(),
-      product: newProduct.toObject(),
-      productCount: user.productCount, // Return updated product count
+      productId: newProduct._id,
+      product: newProduct,
     });
   } catch (error) {
     console.error("Error adding product:", error);
@@ -101,23 +81,21 @@ export const addProduct = async (req, res) => {
 export const showProduct = async (req, res) => {
   try {
     const products = await ProductModel.find();
-    console.log(200);
-    res.status(200).json(products);
+    console.log("+++++++++++++++++++++++++++++++++++++++++++++");
+    console.log("products:", products);
+    res.status(200).json(products); // The image URLs are already included in the product data
   } catch (error) {
     console.error("Error fetching products:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
-export const updateProduct12 = async (req, res) => {
+export const updateProduct = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user.userId; // Extract userId from request
     const { productId } = req.body;
 
-    console.log(`Product ID: ${productId}`);
-    console.log(`User ID: ${userId}`);
-
-    // Check if the productId is valid
+    // Validate productId
     if (!mongoose.Types.ObjectId.isValid(productId)) {
       return res.status(400).json({ message: "Invalid Product ID" });
     }
@@ -138,7 +116,7 @@ export const updateProduct12 = async (req, res) => {
     // Capture old product values for comparison
     const oldProduct = { ...existingProduct.toObject() };
 
-    // Extract fields to update from the request body
+    // Extract fields to update
     const {
       title,
       brand,
@@ -151,71 +129,47 @@ export const updateProduct12 = async (req, res) => {
       subProductType,
     } = req.body;
 
-    // Update the product details if they are provided in the request
-    if (title !== undefined) {
-      existingProduct.oldTitle = oldProduct.title;
-      existingProduct.title = title;
-    }
+    // Update fields only if provided
+    const fieldsToUpdate = {
+      title,
+      brand,
+      year,
+      description,
+      model,
+      categories,
+      price,
+      productType,
+      subProductType,
+    };
 
-    if (brand !== undefined) {
-      existingProduct.oldBrand = oldProduct.brand;
-      existingProduct.brand = brand;
+    for (const key in fieldsToUpdate) {
+      if (fieldsToUpdate[key] !== undefined) {
+        existingProduct[`old${key.charAt(0).toUpperCase() + key.slice(1)}`] =
+          oldProduct[key]; // Corrected this line
+        existingProduct[key] = fieldsToUpdate[key];
+      }
     }
-
-    if (categories !== undefined) {
-      existingProduct.oldCategories = oldProduct.categories;
-      existingProduct.categories = categories;
-    }
-
-    if (year !== undefined) {
-      existingProduct.oldYear = oldProduct.year;
-      existingProduct.year = year;
-    }
-
-    if (description !== undefined) {
-      existingProduct.oldDescription = oldProduct.description;
-      existingProduct.description = description;
-    }
-
-    if (model !== undefined) {
-      existingProduct.oldModel = oldProduct.model;
-      existingProduct.model = model;
-    }
-
-    if (price !== undefined) {
-      existingProduct.oldPrice = oldProduct.price;
-      existingProduct.price = price;
-    }
-
-    if (productType !== undefined) {
-      existingProduct.oldProductType = oldProduct.productType;
-      existingProduct.productType = productType;
-    }
-
-    if (subProductType !== undefined) {
-      existingProduct.oldSubProductType = oldProduct.subProductType;
-      existingProduct.subProductType = subProductType;
-    }
-
     // Update the updatedTime field
     existingProduct.updatedTime = Date.now();
 
     // Save the updated product
     await existingProduct.save();
 
-    // Update the user document with the new productId if not already present
+    // Update the user document with the productId
     await UserModel.findByIdAndUpdate(
       userId._id,
       { $addToSet: { productIds: productId } },
       { new: true }
     );
 
-    console.log("Product ObjectID is: ", productId); // Log the ObjectId
+    // Log old and new product details
+    console.log("Old Product:", oldProduct);
+    console.log("New Product:", existingProduct.toObject());
 
-    // Respond with success message and old/new product details
+    // Respond with success message and details
     return res.status(200).json({
       message: "Product updated successfully",
-      productId: productId.toString(), // Return the productId in the response
+      productId: productId.toString(),
       oldProduct: oldProduct,
       newProduct: existingProduct.toObject(),
     });
@@ -224,68 +178,6 @@ export const updateProduct12 = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
-
-export const updateProduct = async (req, res) => {
-  try {
-    const userId = req.body;
-    const { productId, ...updates } = req.body;
-
-    console.log(`Updating Product ID: ${productId} for User ID: ${userId}`);
-
-    // Validate productId
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
-      return res.status(400).json({ message: "Invalid Product ID" });
-    }
-
-    // Find the existing product by productId and userId
-    const existingProduct = await ProductModel.findOne({
-      _id: productId,
-      userId: userId,
-    });
-
-    if (!existingProduct) {
-      return res.status(404).json({
-        message: "Product not found or you are not authorized to update it.",
-      });
-    }
-
-    // Capture the old product state
-    const oldProduct = { ...existingProduct.toObject() };
-
-    // Update only the fields provided in the request
-    for (const key of Object.keys(updates)) {
-      if (updates[key] !== undefined && existingProduct[key] !== updates[key]) {
-        const oldKey = `old${key.charAt(0).toUpperCase() + key.slice(1)}`;
-        existingProduct[oldKey] = oldProduct[key]; // Store old value
-        existingProduct[key] = updates[key]; // Update to new value
-      }
-    }
-
-    // Update the updatedTime field
-    existingProduct.updatedTime = Date.now();
-
-    // Save the updated product
-    await existingProduct.save();
-
-    // Ensure the user has this product ID in their document
-    await UserModel.findByIdAndUpdate(
-      userId,
-      { $addToSet: { productIds: productId } },
-      { new: true }
-    );
-
-    return res.status(200).json({
-      message: "Product updated successfully",
-      productId: productId,
-      oldProduct: oldProduct,
-      newProduct: existingProduct.toObject(),
-    });
-  } catch (err) {
-    console.error("Error updating product:", err);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-};
-
 
 export const addFavoriteProduct = async (req, res) => {
   try {
@@ -320,17 +212,42 @@ export const addFavoriteProduct = async (req, res) => {
     if (!user.favorites.includes(productId)) {
       user.favorites.push(productId); // Add the product ID to the favorites array
       await user.save();
+      return res.status(200).json({
+        message: "Product added to favorites successfully",
+        favorites: user.favorites,
+      });
     } else {
-      user.favorites.remove(productId);
-      await user.save();
+      return res.status(400).json({
+        message: "Product already in your favorites",
+      });
     }
-
-    res.status(200).json({
-      message: "Product added to favorites successfully",
-      favorites: user.favorites,
-    });
   } catch (error) {
     console.error("Error adding product to favorites:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const showUserAddProduct = async (req, res) => {
+  const { addProductUserId } = req.body;
+
+  if (!addProductUserId) {
+    return res.status(400).json({ message: "User ID is required" });
+  }
+
+  try {
+    // Fetch products associated with the given userId
+    const products = await ProductModel.find({
+      addProductUserId: addProductUserId,
+    });
+    console.log("produts:----", products);
+
+    // Return both the products and the count of products
+    res.json({
+      products,
+      productCount: products.length,
+    });
+  } catch (error) {
+    console.error("Error fetching products:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -365,7 +282,6 @@ export const getFavoriteProducts = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-// Assuming you have UserModel and ProductModel
 
 export const getProductsWithUserDetails = async (req, res) => {
   try {
@@ -389,92 +305,33 @@ export const getProductsWithUserDetails = async (req, res) => {
   }
 };
 
-// Assuming you're using Express.js
-// controller/product.js
-export const softDeleteProduct12 = async (req, res) => {
+export const softDeleteProduct = async (req, res) => {
   try {
-    const { addProductUserId, productId } = req.body;
+    const { productId, addProductUserId } = req.body;
 
-    console.log(
-      `Soft Deleting Product ID: ${productId} for User ID: ${addProductUserId}`
-    );
-
-    // Validate the productId (check if it's a valid ObjectId)
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
-      return res.status(400).json({ message: "Invalid Product ID" });
-    }
-
-    // Validate userId (check if it's a valid ObjectId)
-    if (!mongoose.Types.ObjectId.isValid(addProductUserId)) {
-      return res.status(400).json({ message: "Invalid User ID" });
-    }
-
-    // Find the product by productId
+    // Find the product by its ID
     const product = await ProductModel.findById(productId);
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    // Check if the user who added the product is the same user requesting the deletion
+    // Check if the user who owns the product is the one requesting the deletion
     if (product.addProductUserId.toString() !== addProductUserId) {
-      return res.status(403).json({
-        message: "You can only delete your own products.",
-      });
-    }
-
-    // Check if the user is an admin and prevent admin from deleting
-    const user = await UserModel.findById(addProductUserId);
-    if (user && user.role === "admin") {
-      return res.status(403).json({
-        message: "Admin is not allowed to soft delete products.",
-      });
+      return res
+        .status(403)
+        .json({ message: "You can only delete your own products." });
     }
 
     // Mark the product as deleted (soft delete)
-    product.deleted = true;
-    product.deletedAt = new Date(); // Timestamp for soft delete
+    product.isDeleted = true;
+    product.deletedAt = new Date();
 
-    // Save the product with the soft delete flag
+    // Save the changes
     await product.save();
 
-    // Return a success message with product details
-    return res.status(200).json({
-      message: "Product successfully marked as deleted",
-      productId: productId,
-      deletedAt: product.deletedAt,
-    });
+    return res.status(200).json({ message: "Product successfully deleted" });
   } catch (err) {
-    console.error("Error soft deleting product:", err);
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("Error deleting product:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
-};
-
-export const softDeleteProduct = async (req, res) => {
-
-    try {
-      const { productId, addProductUserId } = req.body;
-    
-      // Find the product by its ID
-      const product = await ProductModel.findById(productId);
-      if (!product) {
-        return res.status(404).json({ message: 'Product not found' });
-      }
-
-      // Check if the user who owns the product is the one requesting the deletion
-      if (product.addProductUserId.toString() !== addProductUserId) {
-        return res.status(403).json({ message: 'You can only delete your own products.' });
-      }
-
-      // Mark the product as deleted (soft delete)
-      product.isDeleted = true;
-      product.deletedAt = new Date();
-
-      // Save the changes
-      await product.save();
-
-      return res.status(200).json({ message: 'Product successfully deleted' });
-    } catch (err) {
-      console.error('Error deleting product:', err);
-      res.status(500).json({ message: 'Internal server error' });
-    }
 };

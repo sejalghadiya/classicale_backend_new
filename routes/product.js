@@ -1,5 +1,5 @@
 import express from "express";
-import multer from "multer";
+import { upload } from "../auth/image.js"; // Default import
 
 import {
   addFavoriteProduct,
@@ -8,6 +8,7 @@ import {
   updateProduct,
   getFavoriteProducts,
   softDeleteProduct,
+  showUserAddProduct,
 } from "../controller/product.js";
 import { authenticateUser } from "../auth/middle.js";
 // In routes or other files
@@ -16,13 +17,17 @@ import { authenticateUser } from "../auth/middle.js";
 const router = express.Router();
 //const memoryStorage = multer.memoryStorage();
 //const upload = multer({ storage: memoryStorage });
-const memoryStorage = multer.memoryStorage();
-const upload = multer({ storage: memoryStorage });
 
-router.post("/add", upload.single('image'), authenticateUser, addProduct);
+router.post(
+  "/products/add",
+  authenticateUser,
+  upload.array("images", 12),
+  addProduct
+);
 
 router.get("/showProduct", showProduct);
-router.delete("/deleteProduct",authenticateUser, softDeleteProduct);
+router.delete("/deleteProduct", authenticateUser, softDeleteProduct);
+router.get("/getProduct", showUserAddProduct);
 router.put("/update", authenticateUser, updateProduct);
 router.post("/favorites", authenticateUser, addFavoriteProduct);
 router.get("/getFavoriteProduct", authenticateUser, getFavoriteProducts);
