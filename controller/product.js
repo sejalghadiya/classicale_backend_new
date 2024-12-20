@@ -25,7 +25,6 @@ export const addProduct = async (req, res) => {
 
     const images = [];
     req.files.forEach((image) => {
-      // Assuming 'image.filename' is the file name of the uploaded image
       images.push(`/images/${image.filename}`);
     });
 

@@ -73,8 +73,10 @@ const __filename = new URL(import.meta.url).pathname;
 const __dirname = path.dirname(__filename);
 console.log("+++++++++++++++");
 console.log("fileName:---------", __filename);
-app.use("/images", express.static(path.join("public", "images")));
+//app.use("/images", express.static(path.join("public", "images")));
 
+
+app.use("/images", express.static(path.join(__dirname, "public", "images")));
 app.use("/api/products", ProductRouter);
 
 app.use("/api/admin", AdminRouter);
