@@ -18,6 +18,7 @@ import { CommunicateModel } from "./model/chat.js";
 import SendOtpRouter from "./routes/sendOtp.js";
 import path from "path";
 dotenv.config();
+app.use(cors());
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -77,6 +78,7 @@ console.log("fileName:---------", __filename);
 
 
 app.use("/images", express.static(path.join(__dirname, "public", "images")));
+
 app.use("/api/products", ProductRouter);
 
 app.use("/api/admin", AdminRouter);
