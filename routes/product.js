@@ -19,9 +19,9 @@ const router = express.Router();
 //const upload = multer({ storage: memoryStorage });
 
 router.post(
-  "/products/add",
+  "/add",
   authenticateUser,
-  upload.array("images", 12),
+  upload.array("images", 5),
   addProduct
 );
 
