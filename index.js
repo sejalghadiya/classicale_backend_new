@@ -19,8 +19,8 @@ import SendOtpRouter from "./routes/sendOtp.js";
 import path from "path";
 import cors from 'cors';
 dotenv.config();
-app.use(cors());
 const app = express();
+app.use(cors());
 const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
 // Create Socket.IO server
@@ -30,7 +30,7 @@ export const io = new Server(server, {
     methods: ["GET", "POST"],
   },
 });
-
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
