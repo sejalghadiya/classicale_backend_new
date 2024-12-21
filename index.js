@@ -17,8 +17,9 @@ import Admin from "./model/admin.js"; // Import the admin model
 import { CommunicateModel } from "./model/chat.js";
 import SendOtpRouter from "./routes/sendOtp.js";
 import path from "path";
+import cors from 'cors';
 dotenv.config();
-
+app.use(cors());
 const app = express();
 const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
