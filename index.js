@@ -18,7 +18,6 @@ import { CommunicateModel } from "./model/chat.js";
 import SendOtpRouter from "./routes/sendOtp.js";
 import path from "path";
 dotenv.config();
-app.use(cors());
 
 const app = express();
 const PORT = process.env.PORT || 3000;
