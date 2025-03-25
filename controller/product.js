@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 
 dotenv.config();
 
+
 export const addProduct = async (req, res) => {
   try {
     console.log("User ID from request:", req.user.userId); // Ensure user data is available
