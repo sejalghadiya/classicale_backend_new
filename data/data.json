@@ -1,0 +1,223 @@
+[
+{
+  "_id": {
+    "$oid": "674e9b3dafd89dbbb286ce6f"
+  },
+  "Country_Code": "IN",
+  "Postal_Code": "387230",
+  "Location_Name": "Pij",
+  "State": "Gujarat",
+  "State_Code": "09",
+  "District": "Kheda",
+  "Sub_district_Code": "483",
+  "Sub_district_Name": "Nadiad"
+},
+{
+  "_id": {
+    "$oid": "674e9b3dafd89dbbb286ce70"
+  },
+  "Country_Code": "IN",
+  "Postal_Code": "387305",
+  "Location_Name": "Kaparupur",
+  "State": "Gujarat",
+  "State_Code": "09",
+  "District": "Kheda",
+  "Sub_district_Code": "483",
+  "Sub_district_Name": "Mahudha"
+},
+{
+  "_id": {
+    "$oid": "674e9b3cafd89dbbb286c1b9"
+  },
+  "Country_Code": "IN",
+  "Postal_Code": "380049",
+  "Location_Name": "Nikol",
+  "State": "Gujarat",
+  "State_Code": "09",
+  "District": "Ahmedabad",
+  "Sub_district_Code": "474",
+  "Sub_district_Name": "Ahmedabad City"
+},
+{
+  "_id": {
+    "$oid": "674e9b3cafd89dbbb286c1ba"
+  },
+  "Country_Code": "IN",
+  "Postal_Code": "380050",
+  "Location_Name": "Ghodasar (Ahmedabad)",
+  "State": "Gujarat",
+  "State_Code": "09",
+  "District": "Ahmedabad",
+  "Sub_district_Code": "474",
+  "Sub_district_Name": "Ahmadabad City"
+},
+{
+  "_id": {
+    "$oid": "674e9b3cafd89dbbb286c1bb"
+  },
+  "Country_Code": "IN",
+  "Postal_Code": "380051",
+  "Location_Name": "Jivraj Park",
+  "State": "Gujarat",
+  "State_Code": "09",
+  "District": "Ahmedabad",
+  "Sub_district_Code": "474",
+  "Sub_district_Name": "Ahmadabad City"
+},
+{
+  "_id": {
+    "$oid": "674e9b3dafd89dbbb286d7e4"
+  },
+  "Country_Code": "IN",
+  "Postal_Code": "392150",
+  "Location_Name": "Ankhi",
+  "State": "Gujarat",
+  "State_Code": "09",
+  "District": "Surat",
+  "Sub_district_Code": "492",
+  "Sub_district_Name": "Jambusar"
+},
+{
+  "_id": {
+    "$oid": "674e9b3dafd89dbbb286d7e5"
+  },
+  "Country_Code": "IN",
+  "Postal_Code": "393050",
+  "Location_Name": "Kuilivel",
+  "State": "Gujarat",
+  "State_Code": "09",
+  "District": "Surat",
+  "Sub_district_Code": "492",
+  "Sub_district_Name": "NA"
+},
+{
+  "_id": {
+    "$oid": "674e9b3dafd89dbbb286d7e6"
+  },
+  "Country_Code": "IN",
+  "Postal_Code": "393050",
+  "Location_Name": "Borda",
+  "State": "Gujarat",
+  "State_Code": "09",
+  "District": "Surat",
+  "Sub_district_Code": "492",
+  "Sub_district_Name": "NA"
+},
+{
+  "_id": {
+    "$oid": "674e9b3dafd89dbbb286d7e7"
+  },
+  "Country_Code": "IN",
+  "Postal_Code": "393125",
+  "Location_Name": "Sabaria",
+  "State": "Gujarat",
+  "State_Code": "09",
+  "District": "Surat",
+  "Sub_district_Code": "492",
+  "Sub_district_Name": "Valia"
+},
+{
+  "_id": {
+    "$oid": "674e9b42afd89dbbb2873ca5"
+  },
+  "Country_Code": "IN",
+  "Postal_Code": "410208",
+  "Location_Name": "Koynavale",
+  "State": "Maharashtra",
+  "State_Code": "16",
+  "District": "Raigarh(MH)",
+  "Sub_district_Code": "",
+  "Sub_district_Name": "Panvel"
+},
+{
+  "_id": {
+    "$oid": "674e9b42afd89dbbb2873ca6"
+  },
+  "Country_Code": "IN",
+  "Postal_Code": "410208",
+  "Location_Name": "Padghe",
+  "State": "Maharashtra",
+  "State_Code": "16",
+  "District": "Raigarh(MH)",
+  "Sub_district_Code": "",
+  "Sub_district_Name": "Panvel"
+},
+{
+  "_id": {
+    "$oid": "674e9b42afd89dbbb2873ca7"
+  },
+  "Country_Code": "IN",
+  "Postal_Code": "410208",
+  "Location_Name": "Tondra",
+  "State": "Maharashtra",
+  "State_Code": "16",
+  "District": "Raigarh(MH)",
+  "Sub_district_Code": "",
+  "Sub_district_Name": "Panvel"
+},
+{
+  "_id": {
+    "$oid": "674e9b42afd89dbbb2873ca8"
+  },
+  "Country_Code": "IN",
+  "Postal_Code": "410208",
+  "Location_Name": "Devichapada",
+  "State": "Maharashtra",
+  "State_Code": "16",
+  "District": "Raigarh(MH)",
+  "Sub_district_Code": "",
+  "Sub_district_Name": "Panvel"
+},
+{
+  "_id": {
+    "$oid": "674e9b3dafd89dbbb286d805"
+  },
+  "Country_Code": "IN",
+  "Postal_Code": "394120",
+  "Location_Name": "Kosamba",
+  "State": "Gujarat",
+  "State_Code": "09",
+  "District": "Surat",
+  "Sub_district_Code": "492",
+  "Sub_district_Name": "Olpad"
+},
+{
+  "_id": {
+    "$oid": "674e9b3dafd89dbbb286da62"
+  },
+  "Country_Code": "IN",
+  "Postal_Code": "395017",
+  "Location_Name": "Althan",
+  "State": "Gujarat",
+  "State_Code": "09",
+  "District": "Surat",
+  "Sub_district_Code": "492",
+  "Sub_district_Name": "Surat City"
+},
+{
+  "_id": {
+    "$oid": "674e9b3dafd89dbbb286da63"
+  },
+  "Country_Code": "IN",
+  "Postal_Code": "395023",
+  "Location_Name": "Bhestan",
+  "State": "Gujarat",
+  "State_Code": "09",
+  "District": "Surat",
+  "Sub_district_Code": "492",
+  "Sub_district_Name": "Surat"
+},
+{
+  "_id": {
+    "$oid": "674e9b3dafd89dbbb286da64"
+  },
+  "Country_Code": "IN",
+  "Postal_Code": "396510",
+  "Location_Name": "Kos",
+  "State": "Gujarat",
+  "State_Code": "09",
+  "District": "Surat",
+  "Sub_district_Code": "492",
+  "Sub_district_Name": "Mahuva"
+}
+]

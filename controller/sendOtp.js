@@ -33,8 +33,8 @@ export const forgotPassword = async (req, res) => {
       port: 465,
       secure: true, // Use SSL
       auth: {
-        user: "ttsnikol89@gmail.com",
-        pass: "qkrn wlbu wnft qzgn",
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
       },
     });
 

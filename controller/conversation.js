@@ -2,11 +2,65 @@ import { ConversationModel } from "../model/conversation.js";
 import { UserModel } from "../model/user.js";
 import mongoose from "mongoose";
 
+export const resetNewMessages = async (req, res) => {
+  const { conversationId } = req.body;
+
+  try {
+    // Validate conversationId format
+    if (!mongoose.Types.ObjectId.isValid(conversationId)) {
+      return res.status(400).json({ message: "Invalid conversation ID" });
+    }
+
+    // Reset newMessages to 0
+    const updatedConversation = await ConversationModel.findOneAndUpdate(
+      { _id: conversationId },
+      { newMessages: 0 }, // Reset the newMessages field
+      { new: true } // Return the updated conversation
+    );
+
+    // If conversation not found
+    if (!updatedConversation) {
+      return res.status(404).json({ message: "Conversation not found" });
+    }
+
+    // Success response
+    res.status(200).json({
+      message: "New messages reset successfully",
+      conversation: updatedConversation,
+    });
+  } catch (error) {
+    console.error("Error resetting new messages:", error);
+    res.status(500).json({
+      message: "An error occurred",
+      error: error.message,
+    });
+  }
+};
+
 export const createConversation = async (req, res) => {
   const { senderId, receiverId } = req.body;
 
   try {
-    // Check if a conversation already exists between these users
+    // Fetch sender and receiver from the database
+    const [sender, receiver] = await Promise.all([
+      UserModel.findById(senderId).select("firstName email image"),
+      UserModel.findById(receiverId).select("firstName email image"),
+    ]);
+
+    if (!sender) {
+      return res
+        .status(404)
+        .json({ message: `Sender with ID ${senderId} not found` });
+    }
+
+    if (!receiver) {
+      console.log(`Receiver ID ${receiverId} not found in UserModel`);
+      return res
+        .status(404)
+        .json({ message: `Receiver with ID ${receiverId} not found` });
+    }
+
+    // Check if a conversation already exists
     let conversation = await ConversationModel.findOne({
       $or: [
         { senderId: senderId, receiverId: receiverId },
@@ -14,56 +68,34 @@ export const createConversation = async (req, res) => {
       ],
     });
 
-    // Fetch receiver details from the UserModel
-    const receiver = await UserModel.findById(receiverId).select(
-      "firstName email image"
-    );
-
-    if (!receiver) {
-      return res.status(404).json({
-        message: "Receiver user not found",
-      });
-    }
-
-    // Fetch sender details from the UserModel
-    const sender = await UserModel.findById(senderId).select(
-      "firstName email image"
-    );
-
-    if (!sender) {
-      return res.status(404).json({
-        message: "Sender user not found",
-      });
-    }
-
+    // Create a new conversation if it doesn't exist
     if (!conversation) {
-      // Create a new conversation including sender's and receiver's details
       conversation = new ConversationModel({
-        receiverId,
-        receiverName: receiver.firstName,
-        receiverEmail: receiver.email,
-        receiverImage: receiver.image,
         senderId,
         senderName: sender.firstName,
         senderEmail: sender.email,
         senderImage: sender.image,
+        receiverId,
+        receiverName: receiver.firstName,
+        receiverEmail: receiver.email,
+        receiverImage: receiver.image,
       });
-
-      // Save the conversation to the database
       await conversation.save();
+
+      // Add conversationId to both users' chatLists
+      await Promise.all([
+        UserModel.updateOne(
+          { _id: senderId },
+          { $addToSet: { chatList: conversation._id } }
+        ),
+        UserModel.updateOne(
+          { _id: receiverId },
+          { $addToSet: { chatList: conversation._id } }
+        ),
+      ]);
     }
 
-    // Add conversationId to the chatList of both users
-    await UserModel.updateOne(
-      { _id: senderId },
-      { $addToSet: { chatList: conversation._id } }
-    );
-    await UserModel.updateOne(
-      { _id: receiverId },
-      { $addToSet: { chatList: conversation._id } }
-    );
-
-    // Send the conversation ObjectId and details in the response
+    // Respond with success
     res.status(200).json({
       message: "Conversation created successfully",
       conversationId: conversation._id,
@@ -81,8 +113,6 @@ export const createConversation = async (req, res) => {
       },
       conversation,
     });
-    console.log("receiverImage:------", receiver.image),
-      console.log("receiverName:______", receiver.firstName);
   } catch (error) {
     console.error("Error creating conversation:", error);
     res.status(500).json({
@@ -91,8 +121,6 @@ export const createConversation = async (req, res) => {
     });
   }
 };
-
-
 export const getAllConversation = async (req, res) => {
   const { userId } = req.body; // Assuming the userId is sent in the request body
 
@@ -167,6 +195,59 @@ export const getAllConversation = async (req, res) => {
     });
   }
 };
+export const getAllConversation12 = async (req, res) => {
+  const { userId } = req.body;
 
+  try {
+    // Find all conversations for the user
+    const conversations = await ConversationModel.find({
+      $or: [{ senderId: userId }, { receiverId: userId }],
+    })
+      .populate("senderId", "firstName email image")
+      .populate("receiverId", "firstName email image");
+
+    console.log("Populated Conversations:", conversations);
+
+    if (!conversations.length) {
+      return res.status(404).json({
+        message: "No conversations found",
+      });
+    }
+
+    const users = new Map();
+
+    // Iterate through the conversations and set 'pending' status for each message
+    for (const conversation of conversations) {
+      if (Array.isArray(conversation.messages)) {
+        // Check if messages is an array
+        for (const message of conversation.messages) {
+          if (message.status === "pending") {
+            if (message.receiverId.toString() === userId) {
+              await ConversationModel.updateOne(
+                { _id: conversation._id, "messages.id": message.id },
+                { $set: { "messages.$.status": "pending" } }
+              );
+            }
+          }
+        }
+      } else {
+        console.log("No messages in conversation:", conversation._id);
+      }
+    }
+
+    const userList = Array.from(users.values());
+
+    res.status(200).json({
+      message: "Users retrieved successfully",
+      userList,
+    });
+  } catch (error) {
+    console.error("Error retrieving users:", error);
+    res.status(500).json({
+      message: "An error occurred",
+      error: error.message,
+    });
+  }
+};
 
 // Example server-side code for sending conversation details

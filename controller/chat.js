@@ -3,6 +3,8 @@ import { CommunicateModel } from "../model/chat.js";
 import { io } from "socket.io-client";
 import { Socket } from "socket.io";
 const socket = io("http://localhost:3000");
+import { ObjectId } from "mongodb";
+
 export const sendMessage12 = async (req, res) => {
   const { conversationId, senderId, receiverId, text } = req.body;
 
@@ -281,11 +283,8 @@ export const sendMessage22 = async (req, res) => {
   }
 };
 
-const ObjectId = mongoose.Types.ObjectId;
 
-
-
-export const deleteMessage = async (req, res) => {
+export const deleteMessage2 = async (req, res) => {
   const { messageId } = req.body; // Expecting messageId in the request body
   const userId = req.user.id; // Get the user ID from the authenticated user
 
@@ -323,8 +322,124 @@ export const deleteMessage = async (req, res) => {
 };
 
 
+export const deleteMessage = async (req, res) => {
+  const { messageId, userId, deleteForEveryone } = req.body;
 
-export const getMessages = async (req, res) => {
+  try {
+    if (!ObjectId.isValid(messageId)) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Invalid messageId format." });
+    }
+
+    const messageObjectId = new ObjectId(messageId);
+
+    if (deleteForEveryone) {
+      // Delete for both sender and receiver
+      const result = await CommunicateModel.updateOne(
+        { "messages.id": messageObjectId },
+        {
+          $set: {
+            "messages.$[elem].isDeleted": true,
+            "messages.$[elem].deletedBy": [],
+          },
+        },
+        {
+          arrayFilters: [{ "elem.id": messageObjectId }],
+        }
+      );
+
+      if (result.modifiedCount === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Message not found or already deleted for everyone.",
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Message deleted for everyone.",
+      });
+    } else {
+      // Delete only for the current user
+      const result = await CommunicateModel.updateOne(
+        { "messages.id": messageObjectId },
+        {
+          $addToSet: { "messages.$[elem].deletedBy": userId },
+        },
+        {
+          arrayFilters: [{ "elem.id": messageObjectId }],
+        }
+      );
+
+      if (result.modifiedCount === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Message not found or already deleted for this user.",
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Message deleted for this user.",
+      });
+    }
+  } catch (error) {
+    console.error("Error deleting message:", error);
+    res.status(500).json({
+      success: false,
+      error: "Something went wrong while deleting the message.",
+    });
+  }
+};
+
+
+export const deleteMessage3 = async (req, res) => {
+  const { messageId, userId } = req.body;
+
+  try {
+    // Ensure messageId is a valid ObjectId
+    if (!ObjectId.isValid(messageId)) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Invalid messageId format." });
+    }
+
+    const messageObjectId = new ObjectId(messageId);
+
+    // MongoDB query to add userId to deletedBy array
+    const result = await CommunicateModel.updateOne(
+      { "messages.id": messageObjectId }, // Find the message by its id
+      {
+        $addToSet: { "messages.$[elem].deletedBy": userId }, // Add userId to deletedBy array
+      },
+      {
+        arrayFilters: [{ "elem.id": messageObjectId }], // Ensure we are updating the correct message
+      }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Message not found or already deleted for this user.",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Message deleted successfully for this user.",
+    });
+  } catch (error) {
+    console.error("Error deleting message:", error);
+    res.status(500).json({
+      success: false,
+      error: "Something went wrong while deleting the message.",
+    });
+  }
+};
+
+
+export const getMessages12 = async (req, res) => {
   try {
     // Assuming the conversationId is sent in the body of the request
     const { conversationId } = req.body;
@@ -343,6 +458,28 @@ export const getMessages = async (req, res) => {
     console.error("Error fetching messages:", err);
     res.status(500).send(err);
   }
+};
+export const getMessages = async (req, res) => {
+const { conversationId } = req.body;
+
+if (!conversationId) {
+  return res.status(400).json({ error: "Conversation ID is required" });
+}
+
+try {
+  const messages = await CommunicateModel.find({
+    conversationId: conversationId,
+  });
+
+  if (!messages.length) {
+    return res.status(404).json({ error: "No messages found" });
+  }
+
+  res.json({ messages }); // Send messages back
+} catch (error) {
+  console.error("Error fetching messages:", error);
+  res.status(500).json({ error: error.message });
+}
 };
 
 export const forwardMessage = async (req, res) => {

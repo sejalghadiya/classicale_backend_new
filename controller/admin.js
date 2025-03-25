@@ -6,7 +6,7 @@ import { UserModel } from "../model/user.js";
 import mongoose from "mongoose";
 import { ConversationModel } from "../model/conversation.js";
 import { CommunicateModel } from "../model/chat.js";
-
+import nodemailer from "nodemailer";
 export const adminLogin = async (req, res) => {
   const { email, password } = req.body;
 
@@ -28,8 +28,8 @@ export const adminLogin = async (req, res) => {
     // Generate a JWT token
     const token = jwt.sign(
       { id: admin._id, role: admin.role },
-      process.env.JWT_SECRET || "classicaleProject", // Use environment variable for secret
-      { expiresIn: "2h" }
+      process.env.JWT_SECRET, // Use environment variable for secret
+      { expiresIn: "60d" }
     );
 
     // Respond with token and admin details
@@ -209,7 +209,6 @@ export const getAllConversation = async (req, res) => {
   }
 };
 
-// Controller method to get all products added by the user
 export const getUserProducts = async (req, res) => {
   const { userId } = req.body; // Extract userId from the request body
 
@@ -302,9 +301,6 @@ export const deleteUser = async (req, res) => {
   try {
     // Verify that the requesting user is an admin
     const { userId, adminId } = req.body;
-    
-    
-    
 
     console.log("User Object", userId);
 
@@ -338,13 +334,10 @@ export const deleteUser = async (req, res) => {
   }
 };
 
-
-
-
 const ObjectId = mongoose.Types.ObjectId;
 export const getDeletedMessages = async (req, res) => {
   const { messageId } = req.body; // Expecting messageId in the request body
- 
+
   // Check if messageId is provided
   if (!messageId) {
     return res.status(400).json({
@@ -381,5 +374,162 @@ export const getDeletedMessages = async (req, res) => {
       success: false,
       error: "An error occurred while deleting the message.",
     });
+  }
+};
+
+export const adminVerifyUser1 = async (req, res) => {
+  const { userId, isOtpVerified } = req.body;
+
+  try {
+    // Find the user by ID
+    const user = await UserModel.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    user.isOtpVerified = isOtpVerified;
+    await user.save();
+
+    if (isOtpVerified === true) {
+      const otp = generateOtp(6);
+      user.otp = otp;
+      await user.save();
+      await sendOtpEmail(user.email, otp);
+
+      return res.status(200).json({ message: "User verified and OTP sent." });
+    } else {
+      return res.status(200).json({ message: "User verification rejected." });
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+export const adminVerifyUser = async (req, res) => {
+  const { userId, isVerified } = req.body;
+
+  try {
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // ✅ Update verification status
+    user.isVerified = isVerified;
+
+    if (isVerified) {
+      // ✅ Generate OTP and save
+      const otp = generateOtp(6);
+      user.otp = otp;
+      user.otpUsed = false; // Ensure OTP is fresh
+      await sendOtpEmail(user.email, otp);
+    }
+
+    await user.save(); // ✅ Save all changes in one go
+
+    return res.status(200).json({
+      message: isVerified
+        ? "User verified and OTP sent."
+        : "User verification rejected.",
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+const generateOtp = (length = 6) => {
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  const numbers = "0123456789";
+
+  let otp = "";
+
+  // Add 2 random numbers
+  for (let i = 0; i < 2; i++) {
+    otp += numbers.charAt(Math.floor(Math.random() * numbers.length));
+  }
+
+  // Add 4 random letters
+  for (let i = 0; i < 4; i++) {
+    otp += letters.charAt(Math.floor(Math.random() * letters.length));
+  }
+
+  // Shuffle OTP to mix numbers and letters
+  otp = otp
+    .split("")
+    .sort(() => Math.random() - 0.5)
+    .join("");
+
+  return otp;
+};
+
+const sendOtpEmail = async (email, otp) => {
+  // Create transporter for sending email using Gmail (or any other email service)
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true, // Use SSL
+    auth: {
+      user: "ttsnikol89@gmail.com",
+      pass: "qkrn wlbu wnft qzgn",
+    },
+  });
+
+  // Email options
+  const mailOptions = {
+    from: '"Support Team" <support@yourdomain.com>',
+    to: email,
+    subject: "Password Reset OTP",
+    text: `Hello, \n\nYour OTP for resetting the password is: ${otp}\n\nThis OTP is valid for 10 minutes.`,
+  };
+  try {
+    // Send email
+    await transporter.sendMail(mailOptions);
+    console.log(`OTP sent to ${email}`);
+  } catch (error) {
+    console.error(`Error sending OTP: ${error.message}`);
+  }
+};
+export const verifyOtp = async (req, res) => {
+  const { userId, otp } = req.body;
+
+  try {
+    const user = await UserModel.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Ensure the user is verified before verifying OTP
+    if (user.verificationStatus !== "Verified") {
+      return res
+        .status(400)
+        .json({ message: "User is not verified yet by admin" });
+    }
+
+    // Check if OTP exists and is not expired
+    const currentTime = new Date().getTime();
+    if (user.otp !== otp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    if (user.otpUsed) {
+      return res.status(400).json({ message: "OTP has already been used" });
+    }
+
+    if (currentTime > user.otpExpiry) {
+      return res.status(400).json({ message: "OTP has expired" });
+    }
+
+    // OTP is valid and not used yet
+    user.otpUsed = true; // Mark OTP as used
+    await user.save();
+
+    return res.status(200).json({ message: "OTP verified successfully" });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Something went wrong" });
   }
 };

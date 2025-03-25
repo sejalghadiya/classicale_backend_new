@@ -1,209 +1,125 @@
 import mongoose from "mongoose";
-
+import mongoosePaginate from "mongoose-paginate-v2";
 const ProductSchema = new mongoose.Schema({
   addProductUserId: {
     type: mongoose.Schema.Types.ObjectId, // This should be ObjectId
     ref: "User", // Reference to the User model
-    required: true,
   },
+  
   isDeleted: { type: Boolean, default: false }, // Field to mark the product as deleted
   deletedAt: { type: Date, default: null },
-  productId: {
-    type: mongoose.Schema.Types.ObjectId,
-  },
-  uId: {
-    type: mongoose.Schema.Types.ObjectId, // Use ObjectId type
-    ref: "User",
-  },
-  userId: {
-    type: Number,
-    required: true,
-  },
 
-  userName: {
-    type: String,
-  },
-  userEmail: {
-    type: String,
-  },
   type: {
     type: String,
     enum: ["ForRent", "ForSell"],
   },
-  price: {
-    type: String,
-  },
-  oldPrice: {
-    type: String,
-  },
-  brand: {
-    type: String,
-  },
-  oldBrand: {
-    type: String,
-  },
-  year: {
-    type: String,
-  },
-  oldYear: {
-    type: String,
-  },
-  description: {
-    type: String,
-  },
-  oldDescription: {
-    type: String,
-  },
-  title: {
-    type: String,
-  },
-  oldTitle: {
-    type: String,
-  },
-  model: {
-    type: String,
-  },
-  oldModel: {
-    type: String,
+  categories: {
+    type: [String],
+    enum: ["A", "B", "C", "D", "E"],
   },
 
-  images: [{ type: String }],
-  //image: { type: String },
-  oldImage: {
-    type: String,
-  },
-  categories: {
-    type: String,
-    enum: ["A", "B", "C", "D", "E"],
-  },
-  oldCategories: {
-    type: String,
-    enum: ["A", "B", "C", "D", "E"],
-  },
   productType: {
-    type: String,
-    enum: ["Car", "Bike", "Phone", "Property", "Other", "Pets"],
-  },
-  subProductType: {
     type: [String],
   },
-  fuel: {
+  subProductType: { type: [String] },
+  category: {
     type: String,
+    enum: ["Job", "Services"],
   },
-  transmission: {
-    type: String,
-  },
-  kmDriven: {
-    type: Number,
-  },
-  oldKmDriven: {
-    type: Number,
-  },
-  noOfOwners: {
-    type: Number,
-  },
-  oldNoOfOwners: {
-    type: Number,
-  },
+  //car
+  brand: { type: String },
+  oldBrand: { type: String },
+  model: { type: String },
+  oldModel: { type: String },
+  title: { type: String },
+  oldTitle: { type: String },
+  price: { type: String },
+  oldPrice: { type: String },
+  kmDriven: { type: Number },
+  oldKmDriven: { type: Number },
+  fuel: { type: String },
+  oldFuel: { type: String },
+  condition: { type: String },
+  oldCondition: { type: String },
+  transmission: { type: String },
+  oldTransmission: { type: String },
+  year: { type: String },
+  oldYear: { type: String },
+  description: { type: String },
+  oldDescription: { type: String },
+  images: [{ type: String }],
+  oldImage: { type: String },
+  noOfOwners: { type: Number },
+  oldNoOfOwners: { type: Number },
+  pdfResume: { type: String },
+  //image: { type: String },
 
-  propertyType: {
-    type: String,
-  },
-  oldPropertyType: {
-    type: String,
-  },
+  // job releted
+  salaryPeriod: { type: String },
+  oldSalaryPeriod: { type: String },
+  positionType: { type: String },
+  oldPositionType: { type: String },
+  salaryForm: { type: String },
+  oldSalaryForm: { type: String },
+  salaryTo: { type: String },
+  oldSalaryTo: { type: String },
 
-  bedRooms: {
-    type: Number,
-  },
-  oldBedRooms: {
-    type: Number,
-  },
+  //phone
+  screenSize: { type: String },
+  oldScreenSize: { type: String },
+  camera: { type: String },
+  oldCamera: { type: String },
+  batteryBackup: { type: String },
+  newBatteryBackup: { type: String },
+  storage: { type: String },
+  oldStorage: { type: String },
 
-  bathrooms: {
-    type: Number,
-  },
-  oldBathRooms: {
-    type: Number,
-  },
+  // pets:
+  age: { type: String },
+  oldAge: { type: String },
+  //property
+  propertyType: { type: String },
+  oldPropertyType: { type: String },
+  bhk: { type: Number },
+  oldBhk: { type: Number },
+  furnishing: { type: String },
+  oldFurnishing: { type: String },
+  listedBy: { type: String },
+  oldListedBy: { type: String },
+  projectStatus: { type: String },
+  oldProjectStatus: { type: String },
+  superBuildUpArea: { type: String },
+  oldSuperBuildUpArea: { type: String },
+  carpetArea: { type: String },
+  oldCarpetArea: { type: String },
+  maintenance: { type: String },
+  oldMaintenance: { type: String },
+  facing: { type: String },
+  oldFacing: { type: String },
+  totalFloor: { type: Number },
+  oldTotalFloor: { type: Number },
+  florNo: { type: String },
+  oldFlorNo: { type: String },
+  carParking: { type: String },
+  oldCarParking: { type: String },
+  projectName: { type: String },
+  oldProjectName: { type: String },
+  plotArea: { type: String },
+  oldPlotArea: { type: String },
+  length: { type: String },
+  oldLength: { type: String },
+  breadth: { type: String },
+  oldBreadth: { type: String },
 
-  furnishing: {
-    type: String,
-  },
-  oldFurnishing: {
-    type: String,
-  },
+  //sercvices
 
-  constructionStatus: {
-    type: String,
-  },
-  oldConstraintStatus: {
-    type: String,
-  },
-
-  listedBy: {
-    type: String,
-  },
-
-  superBuildUpArea: {
-    type: String,
-  },
-  oldSuperBuildUpArea: {
-    type: String,
-  },
-
-  carpetArea: {
-    type: String,
-  },
-  oldCarpetArea: {
-    type: String,
-  },
-
-  maintenance: {
-    type: String,
-  },
-  oldMaintenance: {
-    type: String,
-  },
-
-  totalFloor: {
-    type: Number,
-  },
-  oldTotalFloor: {
-    type: Number,
-  },
-
-  carParking: {
-    type: String,
-  },
-  oldCarParking: {
-    type: String,
-  },
-
-  facing: {
-    type: String,
-  },
-
-  oldFacing: {
-    type: String,
-  },
-
-  projectName: {
-    type: String,
-  },
-  oldProjectName: {
-    type: String,
-  },
-
-  createdTime: {
-    type: Date,
-    default: Date.now,
-  },
-  updatedTime: {
-    type: Date,
-    default: Date.now,
-  },
+  servicesType: { type: String },
+  oldServicesType: { type: String },
+  subject: { type: String },
+  oldSubject: { type: String },
+  createdTime: { type: Date, default: Date.now },
+  updatedTime: { type: Date, default: Date.now },
 });
 
-// Use the default ObjectId provided by MongoDB as the unique identifier for each product
+ProductSchema.plugin(mongoosePaginate);
 export const ProductModel = mongoose.model("Product", ProductSchema);

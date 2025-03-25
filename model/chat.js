@@ -45,6 +45,11 @@ const CommunicateSchema = new mongoose.Schema({
       image: {
         type: String,
       },
+      status: {
+        type: String,
+        enum: ["pending", "seen"], // Allowed values
+        default: "pending", // Default status
+      },
       isDeleted: { type: Boolean, default: false },
       isRead: { type: Boolean, default: false },
 

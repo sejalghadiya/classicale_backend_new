@@ -11,7 +11,7 @@ export const authenticateToken11 = async (req, res, next) => {
 
   jwt.verify(
     token,
-    process.env.JWT_SECRET || "classicaleProject",
+    process.env.JWT_SECRET,
     async (err, user) => {
       if (err) return res.status(403).json({ message: "Forbidden" });
 
@@ -35,7 +35,7 @@ export const authenticateToken = async (req, res, next) => {
 
   jwt.verify(
     token,
-    process.env.JWT_SECRET || "classicaleProject",
+    process.env.JWT_SECRET,
     async (err, user) => {
       if (err) return res.status(403).json({ message: "Forbidden" });
 

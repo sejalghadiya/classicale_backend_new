@@ -1,6 +1,7 @@
 import express from "express";
 import {
   adminLogin,
+  adminVerifyUser,
   deleteProduct,
   deleteUser,
   getAllConversation,
@@ -38,5 +39,6 @@ router.get("/getUserChats", authenticateToken, admin, getUserChats);
 router.get("/getFavorites", authenticateToken, admin, getFavoriteProduct);
 router.delete("/deleteUser", authenticateToken, admin, deleteUser);
 router.delete("/deletedMessages", authenticateToken, admin, getDeletedMessages);
+router.post("/verifyUser", adminVerifyUser);
 
 export default router;

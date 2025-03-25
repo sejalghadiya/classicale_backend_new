@@ -2,8 +2,10 @@ import { UserModel } from "../model/user.js";
 import { ProductModel } from "../model/product.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import nodemailer from "nodemailer";
-import crypto from "crypto";
+import { TableData } from "../model/pin.js";
+import mongoose from "mongoose";
+import { OccupationModel } from "../model/occupation.js";
+import { read } from "fs";
 
 // Import Twilio using ES module syntax
 //import twilio from 'twilio';
@@ -36,254 +38,445 @@ const ERROR_MESSAGES = {
   SELECTED_VALUES: "Please select a value",
 };
 
-export const userSignUp = async (req, res) => {
-  try {
-    // Fetch the latest user based on userId
-    const latestUser = await UserModel.findOne({}).sort({ userId: -1 });
-
-    // Determine the next userId
-    let nextUserId = 1;
-    if (latestUser && !isNaN(latestUser.userId)) {
-      nextUserId = latestUser.userId + 1;
-    }
-
-    const {
-      firstName,
-      middleName,
-      lastName,
-      gender,
-      dateOfBirth,
-      password,
-      Location,
-      occupation,
-      otherOccupation,
-      email,
-      phone,
-      both,
-      countryCode,
-      role,
-      country,
-      city,
-    } = req.body;
-
-    const userRole = role || "user";
-
-    // Check if the user already exists
-    const existingUser = await UserModel.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
-    }
-
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Handle images
-    let image, proofOneImage, proofTwoImage;
-
-    if (req.files?.image?.[0]) {
-      image = req.files.image[0].buffer.toString("base64"); // Profile image
-    } else {
-      return res.status(400).json({ message: "Profile image is required" });
-    }
-
-    if (req.files?.aadhaarFrontImage?.[0]) {
-      proofOneImage = req.files.aadhaarFrontImage[0].buffer.toString("base64"); // Proof image
-    } else {
-      return res
-        .status(400)
-        .json({ message: "Aadhaar/proof image is required" });
-    }
-
-    if (req.files?.aadhaarBackImage?.[0]) {
-      proofTwoImage = req.files.aadhaarBackImage[0].buffer.toString("base64"); // Proof image
-    } else {
-      return res
-        .status(400)
-        .json({ message: "Aadhaar/proof image is required" });
-    }
-
-    // Create a new user
-    const userData = new UserModel({
-      userId: nextUserId,
-      firstName,
-      middleName,
-      lastName,
-      gender,
-      dateOfBirth,
-      password: hashedPassword,
-      Location,
-      occupation,
-      otherOccupation,
-      email,
-      phone,
-      both,
-      country,
-      city,
-      countryCode,
-      role: userRole,
-      image,
-     // profileImage, // Save the base64 profile image
-      proofOneImage,
-      proofTwoImage, // Save the base64 proof image
-    });
-
-    // Save the user data
-    await userData.save();
-
-    // Generate a JWT token
-    const token = jwt.sign(
-      { id: userData._id, email: userData.email, role: userData.role },
-      "ClassicalProject",
-      { expiresIn: "60d" }
-    );
-
-    return res.status(200).json({
-      message: "User signed up successfully!",
-      user: {
-        ...userData.toObject(),
-        profileImage: undefined, // Do not send sensitive data in the response
-        proofImage: undefined, // Do not send sensitive data in the response
-      },
-      token,
-    });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Something went wrong" });
-  }
+const generateOtp = (firstName, lastName) => {
+  const firstNamePrefix = firstName.slice(0, 2).toUpperCase();
+  const lastNamePrefix = lastName.slice(0, 2).toUpperCase();
+  const randomDigits = Math.floor(10 + Math.random() * 90);
+  return `${firstNamePrefix}${lastNamePrefix}${randomDigits}`;
 };
 
+export const userSignUp = async (req, res) => {
+  try {
+    const {
+      phone,
+      fName,
+      lName,
+      mName,
+      email,
+      password,
+      gender,
+      DOB,
+      occupationId,
+      state,
+      district,
+      country,
+      area,
+      aadharNumber,
+      userCategory,
+    } = req.body;
 
+    // ✅ Step 1: Email Validation
+    if (!email.endsWith("@gmail.com")) {
+      return res
+        .status(400)
+        .json({ message: "Only Gmail ID (@gmail.com) allowed!" });
+    }
+
+    // ✅ Step 2: Check if user already exists
+    const existingUser = await UserModel.findOne({ email, userCategory });
+    if (existingUser) {
+      return res.status(400).json({ message: "Already exists Email" });
+    }
+
+    // // Check if user already exists
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Handle file paths correctly
+    const profileImagePath = req.files?.profileImage
+      ? `/public/profileImages/${req.files.profileImage[0].filename}`
+      : null;
+    console.log(req.files?.profileImage);
+    const aadhaarFrontPath = req.files?.aadhaarCardImage1
+      ? `/public/aadharcardImages/${req.files.aadhaarCardImage1[0].filename}`
+      : null;
+    const aadhaarBackPath = req.files?.aadhaarCardImage2
+      ? `/public/aadharcardImages/${req.files.aadhaarCardImage2[0].filename}`
+      : null;
+
+    // Determine if admin verification is required
+    let isAdminVerify = userCategory === "A";
+
+    let read = [];
+    let write = [];
+
+    if (userCategory === "A") {
+      read = ["A", "B", "D", "E"];
+      write = ["A", "B", "D", "E"];
+    } else if (userCategory === "B") {
+      read = ["B", "C", "D", "E"];
+      write = ["C"];
+    }
+
+    // Create user
+    const newUser = new UserModel({
+      read,
+      write,
+      phone,
+      fName,
+      lName,
+      mName,
+      email,
+      password: hashedPassword,
+      gender,
+      DOB,
+      occupationId: new mongoose.Types.ObjectId(occupationId),
+      state,
+      district,
+      country,
+      area,
+      profileImage: profileImagePath,
+      aadhaarCardImage1: aadhaarFrontPath,
+      aadhaarCardImage2: aadhaarBackPath,
+      aadharNumber,
+      role: "user",
+      userCategory,
+      isVerified: isAdminVerify,
+      isDeleted: false,
+      isBlocked: false,
+      isPinVerified: !isAdminVerify,
+      isOtpVerified: isAdminVerify,
+    });
+
+    // Save user
+    await newUser.save();
+
+    res
+      .status(200)
+      .json({ message: "User registered successfully", user: newUser });
+  } catch (error) {
+    console.log("Error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
 export const userLogin = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, userCategory } = req.body;
 
   try {
-    // Find the user by email
+    // ✅ Find User
     const user = await UserModel.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
-    // Check if the password is correct
-    const isPasswordCorrect = await bcrypt.compare(password, user.password);
-    if (!isPasswordCorrect) {
-      return res.status(400).json({ message: "Invalid credentials" });
+    if (user.userCategory !== userCategory) {
+      return res.status(404).json({ message: "Invalid category" });
     }
 
-    // Generate JWT token
+    // ✅ Check Password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(400).json({ message: "Invalid password" });
+    }
+
+    // ✅ Check if First-Time Login
+    let requiresVerification = false;
+    let verificationType = null;
+
+    if (user.userCategory === "A" && !user.pinVerified) {
+      requiresVerification = true;
+      verificationType = "PIN";
+    } else if (user.userCategory === "B" && !user.otpUsed) {
+      requiresVerification = true;
+      verificationType = "OTP";
+    }
+
+    // ✅ Generate Token
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      "classicalProject", // Ensure this matches your secret key
+      { id: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
       { expiresIn: "60d" }
     );
-    console.log(token);
-    console.log("++++++++++++++++++");
 
-    res.json({
+    return res.status(200).json({
+      message: "Login successful",
       token,
-      user: user,
+      user: {
+        read: user.read,
+        write: user.write,
+        userId: user._id,
+        phone: user.phone,
+        fName: user.fName,
+        mName: user.mName,
+        lName: user.lName,
+        DOB: user.DOB,
+        gender: user.gender,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        state: user.state,
+        district: user.district,
+        area: user.area,
+        country: user.country,
+        //userCategory: user.userCategory,
+        aadhaarCardImage1: user.aadhaarCardImage1,
+        aadhaarCardImage2: user.aadhaarCardImage2,
+        profileImage: user.profileImage,
+        verificationStatus: user.verificationStatus,
+        verificationType,
+        isPinVerified: user.isPinVerified,
+        isOtpVerified: user.isOtpVerified,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      },
     });
-    console.log("user:-----", user);
   } catch (error) {
     console.error("Error during login:", error);
-    res.status(500).json({
-      message: "An internal server error occurred. Please try again later.",
+    return res.status(500).json({
+      message: "Internal Server Error",
       error: error.message,
     });
   }
 };
 
-
-export const updateUser = async (req, res) => {
+export const resetPassword = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const { userId, oldPassword, newPassword } = req.body;
 
-    // Find the existing user by userId
-    const existingUser = await UserModel.findOne({ userId });
+    // ✅ Step 1: Check if user exists
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // ✅ Step 2: Verify Old Password
+    const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
+    if (!isPasswordValid) {
+      return res.status(400).json({ message: "Old password is incorrect" });
+    }
+
+    // ✅ Step 3: Hash New Password
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    // ✅ Step 4: Update Password in Database
+    user.password = hashedNewPassword;
+    await user.save();
+
+    return res.status(200).json({ message: "Password reset successful" });
+  } catch (error) {
+    console.error("Error resetting password:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
+  }
+};
+
+
+
+export const getOccupation = async (req, res) => {
+  try {
+    const occupations = await OccupationModel.find();
+    return res.status(200).json({ occupations });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error fetching user", error: error.message });
+  }
+};
+
+
+
+export const verifyPin = async (req, res) => {
+  try {
+    const { userId, pin } = req.body;
+    console.log("Incoming PIN Verification Request:", req.body);
+
+    // Validate request data
+    if (!userId || !pin) {
+      console.warn("Missing required fields:", { userId, pin });
+      return res.status(400).json({ message: "User ID and PIN are required" });
+    }
+
+    // Find user in the database
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      console.warn("User not found:", userId);
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    console.log("User found:", {
+      userId: user._id,
+      assignedPins: user.assignedPins,
+    });
+
+    // Validate PIN against database
+    const existingPin = await TableData.findOne({ column2: pin });
+    if (!existingPin) {
+      console.warn("Invalid PIN entered:", pin);
+      return res.status(400).json({ message: "Invalid PIN" });
+    }
+
+    // Assign PIN to user and mark as verified
+    user.assignedPins = pin;
+    user.isPinVerified = true;
+    await user.save();
+    console.info("PIN assigned and verified for user:", userId);
+
+    // Update TableData with assigned user
+    const userIdObject = new mongoose.Types.ObjectId(user._id);
+    await TableData.findOneAndUpdate(
+      { column2: pin },
+      {
+        $addToSet: { assignedUsers: userIdObject },
+        $inc: { assignedCount: 1 },
+      }
+    );
+    console.info("Updated TableData for PIN:", pin);
+
+    return res.status(200).json({ message: "PIN verified successfully!" });
+  } catch (error) {
+    console.error("PIN verification error:", error);
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+export const updateUser1 = async (req, res) => {
+  try {
+    let { _id, ...updates } = req.body;
+
+    // ✅ Validate User ID (Corrected)
+    if (!_id) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    // ✅ Convert User ID to ObjectId if needed
+    const userId = mongoose.Types.ObjectId.isValid(_id)
+      ? new mongoose.Types.ObjectId(_id)
+      : _id;
+
+    // 🔍 Find User by userId (Corrected)
+    const existingUser = await UserModel.findOne({ _id: userId });
+
     if (!existingUser) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Store old data before updating
-    const oldUserData = {
-      firstName: existingUser.firstName,
-      middleName: existingUser.middleName,
-      lastName: existingUser.lastName,
-      gender: existingUser.gender,
-      dateOfBirth: existingUser.dateOfBirth,
-      location: existingUser.Location, // Ensure correct field casing
-      occupation: existingUser.occupation,
-      email: existingUser.email,
-      phone: existingUser.phone,
-      both: existingUser.both,
-      image: existingUser.image,
-      city: existingUser.city,
-      country: existingUser.country,
-      updatedAt: existingUser.updatedAt,
-      proofOneImage: existingUser.proofOneImage, // Store old proof images
-      proofTwoImage: existingUser.proofTwoImage, // Store old proof images
-    };
+    const objectId = existingUser._id;
 
-    // Update user fields with new values from the request body
-    const updates = req.body;
-    for (let key in updates) {
+    // 🔄 Handle Image Uploads (If Provided)
+    const profileImage = req.files?.image?.[0]?.path;
+    const aadhaarFrontImage = req.files?.aadhaarProofs?.[0]?.path;
+    const aadhaarBackImage = req.files?.aadhaarProofs?.[1]?.path;
+
+    // ✅ Update Images Only If They Are Provided
+    if (profileImage) updates.image = profileImage;
+    if (aadhaarFrontImage) updates.aadhaarFront = aadhaarFrontImage;
+    if (aadhaarBackImage) updates.aadhaarBack = aadhaarBackImage;
+
+    // 🔄 Update Only Provided Fields
+    Object.keys(updates).forEach((key) => {
       if (updates[key] !== undefined && updates[key] !== null) {
         existingUser[key] = updates[key];
       }
-    }
+    });
 
-    // Handle profile image if provided (base64 string)
-    if (req.body.profileImage) {
-      existingUser.image = req.body.profileImage;
-    }
-
-    // Handle proof images if provided (base64 string)
-    if (req.body.proofOneImage) {
-      existingUser.proofOneImage = req.body.proofOneImage;
-    }
-    if (req.body.proofTwoImage) {
-      existingUser.proofTwoImage = req.body.proofTwoImage;
-    }
-
-    // If files are uploaded (for example, image files), handle them
-    if (req.file) {
-      existingUser.image = req.file.buffer.toString("base64"); // Update profile image with the file
-    }
-
-    // Update the `updatedAt` timestamp
-    existingUser.updatedAt = new Date().toISOString();
-
-    // Save the updated user data
     await existingUser.save();
 
-    // Construct new data object after update
-    const newData = {
-      firstName: existingUser.firstName,
-      middleName: existingUser.middleName,
-      lastName: existingUser.lastName,
-      gender: existingUser.gender,
-      dateOfBirth: existingUser.dateOfBirth,
-      location: existingUser.Location, // Make sure location is reflected here
-      occupation: existingUser.occupation,
-      email: existingUser.email,
-      phone: existingUser.phone,
-      both: existingUser.both,
-      city: existingUser.city,
-      country: existingUser.country,
-      image: existingUser.image,
-      updatedAt: existingUser.updatedAt,
-      proofOneImage: existingUser.proofOneImage, // Return updated proofOneImage
-      proofTwoImage: existingUser.proofTwoImage, // Return updated proofTwoImage
-    };
-
-    // Return a success response with both old and updated data
     return res.status(200).json({
-      oldData: oldUserData,
-      newData: newData,
       message: "User updated successfully",
+      objectId,
+      updatedData: updates,
     });
   } catch (err) {
-    console.error("Error updating user:", err);
-    return res.status(500).json({ message: "Something went wrong" });
+    console.error("❌ Error updating user:", err);
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: err.message });
+  }
+};
+
+export const updateUser = async (req, res) => {
+  try {
+    let { userId, ...updateData } = req.body;
+
+    // ✅ Validate User ID
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    // ✅ Convert User ID to ObjectId if needed
+    const userObjectId = mongoose.Types.ObjectId.isValid(userId)
+      ? new mongoose.Types.ObjectId(userId)
+      : userId;
+
+    // 🔍 Find User
+    const user = await UserModel.findById(userObjectId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // ✅ Fields that need array shifting
+    const arrayFields = [
+      "phone",
+      "fName",
+      "lName",
+      "mName",
+      "gender",
+      "state",
+      "district",
+      "area",
+      "profileImage",
+      "aadhaarCardImage1",
+      "aadhaarCardImage2",
+      "aadharNumber",
+    ];
+
+    let updatedFields = {}; // Store updated fields
+
+    // ✅ Handle Image Uploads (If Provided)
+    const profileImage = req.files?.image?.[0]?.path;
+    const aadhaarFrontImage = req.files?.aadhaarProofs?.[0]?.path;
+    const aadhaarBackImage = req.files?.aadhaarProofs?.[1]?.path;
+
+    if (profileImage) updateData.profileImage = profileImage;
+    if (aadhaarFrontImage) updateData.aadhaarCardImage1 = aadhaarFrontImage;
+    if (aadhaarBackImage) updateData.aadhaarCardImage2 = aadhaarBackImage;
+
+    // ✅ Update & Shift Array Values
+    arrayFields.forEach((field) => {
+      if (updateData[field]) {
+        if (!Array.isArray(user[field])) {
+          user[field] = [];
+        }
+
+        // Ensure array has exactly 2 elements
+        if (user[field].length > 1) {
+          user[field].shift(); // Remove index[0] (old)
+        }
+
+        // Shift index[1] to index[0] if exists
+        if (user[field].length === 1) {
+          user[field][0] = user[field][0];
+        }
+
+        // ✅ Save new data at index[1]
+        user[field][1] = updateData[field];
+
+        // Store updated field for response
+        updatedFields[field] = user[field][1];
+      }
+    });
+
+    // ✅ Update Other Non-Array Fields
+    Object.keys(updateData).forEach((key) => {
+      if (!arrayFields.includes(key)) {
+        user[key] = updateData[key];
+        updatedFields[key] = updateData[key];
+      }
+    });
+
+    // ✅ Save updated user
+    await user.save();
+
+    return res.status(200).json({
+      message: "User updated successfully",
+      updatedFields, // ✅ Return only newly updated fields
+    });
+  } catch (error) {
+    console.error("❌ Error updating user:", error);
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -311,6 +504,142 @@ export const deleteUser = async (req, res) => {
     return res.status(200).json({ message: "User deleted successfully" });
   } catch (err) {
     console.error(err);
+    return res.status(500).json({ message: "Something went wrong" });
+  }
+};
+export const verifyOtp = async (req, res) => {
+  const { userId, otp } = req.body;
+
+  try {
+    const user = await UserModel.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Ensure the user is verified before verifying OTP
+    if (user.isPinVerified !== true) {
+      return res
+        .status(400)
+        .json({ message: "User is not verified yet by admin" });
+    }
+
+    // Check if OTP exists and is not expired
+    const currentTime = new Date().getTime();
+    if (user.otp !== otp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    if (user.otpUsed) {
+      return res.status(400).json({ message: "OTP has already been used" });
+    }
+
+    if (currentTime > user.otpExpiry) {
+      return res.status(400).json({ message: "OTP has expired" });
+    }
+
+    // OTP is valid and not used yet
+    user.isOtpVerified = true; // Mark OTP as used
+    await user.save();
+
+    // Send the user details in the response
+    return res.status(200).json({
+      message: "OTP verified successfully",
+      user: {
+        userId: user.userId,
+        firstName: user.firstName,
+        middleName: user.middleName,
+        lastName: user.lastName,
+        gender: user.gender,
+        dateOfBirth: user.dateOfBirth,
+        password: user.password,
+        Location: user.location,
+        occupation: user.occupation,
+        otherOccupation: user.otherOccupation,
+        email: user.email,
+        phone: user.phone,
+        userCategory: user.userCategory,
+        country: user.country,
+        city: user.city,
+        countryCode: user.countryCode,
+        image: user.image,
+        aadhaarFrontImage: user.aadhaarFrontImage,
+        aadhaarBackImage: user.aadhaarBackImage,
+        role: user.role,
+        verificationStatus: user.verificationStatus,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+export const createNewPassword = async (req, res) => {
+  const { email, password } = req.body; // New password from user
+
+  try {
+    // Find user by email
+    const user = await UserModel.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if OTP has expired (1 hour validity)
+    const otpExpirationTime = 60 * 60 * 1000; // 1 hour in milliseconds
+    if (Date.now() - user.otpTimestamp > otpExpirationTime) {
+      return res.status(400).json({ message: "OTP has expired" });
+    }
+
+    // Hash the new password before storing
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Update user's password
+    user.password = hashedPassword;
+
+    // Optionally, reset OTP and timestamp after password update
+    user.otp = null;
+    user.otpTimestamp = null;
+
+    // Save the updated user
+    await user.save();
+
+    // Return success response
+    return res.status(200).json({ message: "Password updated successfully" });
+  } catch (error) {
+    console.error("Error updating password:", error);
+    return res
+      .status(500)
+      .json({ message: "An error occurred while updating the password" });
+  }
+};
+
+export const checkBothUser = async (req, res) => {
+  const { email } = req.body;
+  const user = await UserModel.findOne({ email });
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  return res.json({ userType: user.userCategory });
+};
+
+export const getOtherOccupations = async (req, res) => {
+  try {
+    const otherOccupations = await UserModel.find(
+      { otherOccupation: { $ne: "" } }, // खाली (empty) values को हटा दें
+      { _id: 0, otherOccupation: 1 } // केवल otherOccupation फ़ील्ड लाएं
+    );
+
+    // Duplicate values को हटाएं (Set का उपयोग करके)
+    const uniqueOtherOccupations = [
+      ...new Set(otherOccupations.map((item) => item.otherOccupation)),
+    ];
+
+    return res.status(200).json(uniqueOtherOccupations);
+  } catch (err) {
+    console.error("Error fetching other occupations:", err);
     return res.status(500).json({ message: "Something went wrong" });
   }
 };

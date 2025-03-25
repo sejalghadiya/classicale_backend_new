@@ -1,27 +1,46 @@
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import mime from "mime-types";
 
-// Define upload path
-const uploadDirectory = path.join("public", "images");
+const __dirname = path.resolve();
+const uploadDirectoryImages = path.join(__dirname, "public", "images");
+const uploadDirectoryPdfs = path.join(__dirname, "public", "pdfs");
 
-// Ensure directory exists
-if (!fs.existsSync(uploadDirectory)) {
-  fs.mkdirSync(uploadDirectory, { recursive: true });
+// 🛠 Check if Folders Exist
+if (!fs.existsSync(uploadDirectoryImages)) {
+  console.log("📂 Creating images folder...");
+  fs.mkdirSync(uploadDirectoryImages, { recursive: true });
+}
+if (!fs.existsSync(uploadDirectoryPdfs)) {
+  console.log("📂 Creating pdfs folder...");
+  fs.mkdirSync(uploadDirectoryPdfs, { recursive: true });
 }
 
-// Multer configuration
+// ✅ Multer Configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadDirectory); // Save files to /public/images
+    const mimeType = mime.lookup(file.originalname);
+    console.log("📄 Original File Name:", file.originalname);
+    console.log("MIME Type Detected:", mimeType);
+
+    if (mimeType?.startsWith("image")) {
+      console.log("📂 Saving image to:", uploadDirectoryImages);
+      cb(null, uploadDirectoryImages);
+    } else if (mimeType === "application/pdf") {
+      console.log("📂 Saving PDF to:", uploadDirectoryPdfs);
+      cb(null, uploadDirectoryPdfs);
+    } else {
+      console.log("❌ Invalid file type:", mimeType);
+      cb(new Error("Invalid file type"), false);
+    }
   },
   filename: (req, file, cb) => {
-    // Generate a unique filename
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(
-      null,
-      file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname)
-    );
+    const fileName =
+      file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname);
+    console.log("📄 File Name:", fileName);
+    cb(null, fileName);
   },
 });
 
