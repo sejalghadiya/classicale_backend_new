@@ -26,9 +26,6 @@ import { UserModel } from "./model/user.js";
 import { setupSocket } from "./socket.js";
 dotenv.config();
 
-const app = express();
-const PORT = process.env.PORT;
-const server = http.createServer(app);
 // Create Socket.IO server
 // export const io = new Server(server, {
 //   cors: {
@@ -36,6 +33,19 @@ const server = http.createServer(app);
 //     methods: ["GET", "POST"],
 //   },
 // });
+import cors from 'cors';
+dotenv.config();
+const app = express();
+app.use(cors());
+const PORT = process.env.PORT || 3000;
+const server = http.createServer(app);
+// Create Socket.IO server
+export const io = new Server(server, {
+  cors: {
+    origin: "*", // Allow all origins (can restrict in production)
+    methods: ["GET", "POST"],
+  },
+});
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -388,6 +398,8 @@ console.log("fileName:---------", __filename);
 // app.use(express.static("public"));
 
 app.use("/public", express.static(path.join(__dirname, "public")));
+
+app.use(express.static(path.join(__dirname, 'public')));
 app.use("/api/products", ProductRouter);
 app.use("/api/admin", AdminRouter);
 app.use("/api/user", UserRouter);
