@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 
 const UserSchema = new mongoose.Schema(
   {
+    uuid: { type: String, default: null },
     token: { type: String, default: null },
     read: { type: [String] },
     write: { type: [String] },
@@ -13,7 +14,7 @@ const UserSchema = new mongoose.Schema(
     mName: { type: [String] },
     email: { type: String },
     password: { type: String },
-    gender: { type: [String], enum: ["MALE", "FEMALE", "Other"] },
+    gender: { type: [String] },
     DOB: { type: [String] },
     occupationId: { type: mongoose.Schema.Types.ObjectId, ref: "Occupation" },
     // occupationId: { type: String },

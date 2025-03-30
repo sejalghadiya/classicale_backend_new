@@ -3,7 +3,21 @@ import { UserModel } from "../model/user.js";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import nodemailer from "nodemailer";
-
+import { SubProductTypeModel } from "../model/sub_product_type.js";
+import { ProductTypeModel } from "../model/product_type.js";
+import { BikeModel } from "../model/bike.js";
+import { CarModel } from "../model/car.js";
+import { BookSportHobbyModel } from "../model/book_sport_hobby.js";
+import { ElectronicRepairingModel } from "../model/electronic_repairing.js";
+import { ElectronicModel } from "../model/electronic.js";
+import { FurnitureModel } from "../model/furniture.js";
+import { JobModel } from "../model/job.js";
+import { PetModel } from "../model/pet.js";
+import { HouseModel } from "../model/property_house.js";
+import { LandModel } from "../model/property_land.js";
+import { ServicesModel } from "../model/services.js";
+import { SmartPhoneModel } from "../model/smart_phone.js";
+import { OtherModel } from "../model/other.js";
 dotenv.config();
 
 export const addProduct2 = async (req, res) => {
@@ -150,7 +164,7 @@ export const addProduct22 = async (req, res) => {
       .json({ message: "Internal server error.", error: error.message });
   }
 };
-export const addProduct = async (req, res) => {
+export const addProduct_remove = async (req, res) => {
   try {
     // 🔍 Find the user
     const user = await UserModel.findOne({ userId: req.user?.userId });
@@ -175,16 +189,16 @@ export const addProduct = async (req, res) => {
     if (req.files?.pdfResume && req.files.pdfResume.length > 0) {
       const pdfFilePath = `/public/pdfs/${req.files.pdfResume[0].filename}`;
       console.log("✅ Uploaded PDF Path:", pdfFilePath);
-      productData.pdfResume = pdfFilePath; 
+      productData.pdfResume = pdfFilePath;
     } else {
       console.log("❌ No PDF uploaded.");
     }
-    console.log("PDF Path:", productData.pdfResume); 
+    console.log("PDF Path:", productData.pdfResume);
 
-    console.log("PDF Path:", productData.pdfResume); 
+    console.log("PDF Path:", productData.pdfResume);
 
     // 🗂️ Set other product data
-    productData.userId = req.user.userId;
+    // productData.userId = req.user.userId;
     productData.addProductUserId = user._id;
     productData.createdTime = Date.now();
     productData.updatedTime = Date.now();
@@ -653,7 +667,6 @@ export const softDeleteProduct = async (req, res) => {
   }
 };
 
-
 export const requestPdfAccess = async (req, res) => {
   const { uploaderId, receiverEmail, pdfUrl, pdfName, requesterName } =
     req.body;
@@ -701,3 +714,135 @@ export const requestPdfAccess = async (req, res) => {
   }
 };
 
+const productModels = {
+  Bike: BikeModel,
+  Car: CarModel,
+  book_sport_hobby: BookSportHobbyModel,
+  electronic_repairing: ElectronicRepairingModel,
+  electronic: ElectronicModel,
+  furniture: FurnitureModel,
+  job: JobModel,
+  pet: PetModel,
+  house: HouseModel,
+  land: LandModel,
+  smart_phone: SmartPhoneModel,
+  services: ServicesModel,
+  other: OtherModel,
+};
+//add Bike
+export const addProduct = async (req, res) => {
+  try {
+    console.log("📌 Request Body:", req.body);
+    console.log("📸 Uploaded Files:", req.files);
+
+    let { productType, subProductType, data } = req.body;
+
+    // ✅ Check if productType and subProductType are provided
+    if (!productType) {
+      return res.status(400).json({ message: "Product Type is required" });
+    }
+    if (!subProductType) {
+      return res.status(400).json({ message: "Sub-Product Type is required" });
+    }
+
+    // ✅ Validate if productType exists
+    const _productType = await ProductTypeModel.findById(productType);
+    if (!_productType) {
+      return res.status(404).json({ message: "Product Type not found" });
+    }
+
+    // ✅ Validate if subProductType exists under the correct productType
+    const _subProductType = await SubProductTypeModel.findOne({
+      _id: subProductType,
+      productType: productType,
+    });
+
+    if (!_subProductType) {
+      return res.status(404).json({
+        message:
+          "SubProduct Type not found or does not belong to this Product Type",
+      });
+    }
+
+    // ✅ Dynamically get the correct model
+    const Model = productModels[_productType.modelName];
+    if (!Model) {
+      return res.status(400).json({ message: "Invalid Model Name" });
+    }
+
+    // ✅ Parse `data` as JSON (since it is sent as a string in multipart requests)
+    if (typeof data === "string") {
+      data = JSON.parse(data);
+    }
+
+    // ✅ Extract image file paths and add them to `data`
+    if (req.files && req.files["images"]) {
+      data.images = req.files["images"].map(
+        (file) => `/images/${file.filename}`
+      );
+    }
+
+    // ✅ Save the product dynamically
+    const product = new Model(data);
+    await product.save();
+
+    return res.status(200).json({
+      message: `${_productType.name} added successfully`,
+      product,
+    });
+  } catch (error) {
+    console.log("❌ Server Error:", error.message);
+    res.status(500).json({ message: "Server error!", error: error.message });
+  }
+};
+
+// export const addProduct = async (req, res) => {
+//   try {
+//     console.log("📌 Request Body:", req.body);
+
+//     const { productType, subProductType, data } = req.body;
+
+//     // ✅ Check if productType is provided
+//     if (!productType) {
+//       return res.status(400).json({ message: "Product Type is required" });
+//     }
+//     if (!subProductType) {
+//       return res.status(400).json({ message: "Sub-Product Type is required" });
+//     }
+
+//     const _productType = await ProductTypeModel.findById(productType);
+//     if (!_productType) {
+//       return res.status(404).json({ message: "Product Type not found" });
+//     }
+
+//     // ✅ Check if subProductType exists under the correct productType
+//     const _subProductType = await SubProductTypeModel.findOne({
+//       _id: subProductType,
+//       productType: productType,
+//     });
+
+//     if (!_subProductType) {
+//       return res.status(404).json({
+//         message:
+//           "SubProduct Type not found or does not belong to this Product Type",
+//       });
+//     }
+
+//     const Model = productModels[_productType.modelName];
+//     if (!Model) {
+//       return res.status(400).json({ message: "Invalid Model Name" });
+//     }
+
+//     // ✅ Save the product dynamically
+//     const product = new Model(data);
+//     await product.save();
+
+//     return res.status(200).json({
+//       message: `${_productType.name} added successfully`,
+//       product,
+//     });
+//   } catch (error) {
+//     console.log("❌ Server Error:", error.message);
+//     res.status(500).json({ message: "Server error!", error: error.message });
+//   }
+// };

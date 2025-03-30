@@ -6,6 +6,8 @@ import { TableData } from "../model/pin.js";
 import mongoose from "mongoose";
 import { OccupationModel } from "../model/occupation.js";
 import { read } from "fs";
+import { SubProductTypeModel } from "../model/sub_product_type.js";
+import { ProductTypeModel } from "../model/product_type.js";
 
 // Import Twilio using ES module syntax
 //import twilio from 'twilio';
@@ -259,8 +261,6 @@ export const resetPassword = async (req, res) => {
   }
 };
 
-
-
 export const getOccupation = async (req, res) => {
   try {
     const occupations = await OccupationModel.find();
@@ -271,8 +271,6 @@ export const getOccupation = async (req, res) => {
       .json({ message: "Error fetching user", error: error.message });
   }
 };
-
-
 
 export const verifyPin = async (req, res) => {
   try {
@@ -640,6 +638,22 @@ export const getOtherOccupations = async (req, res) => {
     return res.status(200).json(uniqueOtherOccupations);
   } catch (err) {
     console.error("Error fetching other occupations:", err);
+    return res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+export const getProductTypes = async (req, res) => {
+  try {
+    const sub_product_types = await SubProductTypeModel.find().populate({
+      path: "productType",
+      select: "-modelName", // exclude modelName
+    });
+
+    console.log(sub_product_types);
+
+    return res.status(200).json(sub_product_types);
+  } catch (err) {
+    console.error("Error fetching product types:", err);
     return res.status(500).json({ message: "Something went wrong" });
   }
 };

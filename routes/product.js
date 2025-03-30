@@ -20,14 +20,14 @@ const router = express.Router();
 //const upload = multer({ storage: memoryStorage });
 
 //router.post("/add", authenticateUser, upload.array("images",5), addProduct);
-router.post(
-  "/add",authenticateUser,
-  upload.fields([
-    { name: "images", maxCount: 5 },
-    { name: "pdfResume", maxCount: 1 },
-  ]),
-  addProduct
-);
+// router.post(
+//   "/add",
+//   upload.fields([
+//     { name: "images", maxCount: 5 },
+//     { name: "pdfResume", maxCount: 1 },
+//   ]),
+//   addProduct
+// );
 
 router.get("/get", searchProduct);
 router.get("/showProduct", showProduct);
@@ -36,4 +36,10 @@ router.get("/getProduct", showUserAddProduct);
 router.put("/update", authenticateUser, updateProduct);
 router.post("/favorites", authenticateUser, addFavoriteProduct);
 router.get("/getFavoriteProduct", authenticateUser, getFavoriteProducts);
+
+router.post(
+  "/add",
+  upload.fields([{ name: "images", maxCount: 5 }]),
+  addProduct
+);
 export default router;

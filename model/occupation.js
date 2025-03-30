@@ -5,5 +5,5 @@ const occupationSchema = new mongoose.Schema({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
 });
 
-export const OccupationModel = mongoose.model("Occupation", occupationSchema);
+export const OccupationModel = mongoose.model("occupation", occupationSchema);
 

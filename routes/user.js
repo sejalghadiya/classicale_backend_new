@@ -11,6 +11,7 @@ import {
   verifyPin,
   getOccupation,
   resetPassword,
+  getProductTypes,
 } from "../controller/user.js";
 import { upload } from "../upload.js";
 import authenticateUser from "../auth/middle.js";
@@ -49,6 +50,7 @@ router.post("/checkBoth", checkBothUser);
 
 router.get("/get-occupations", getOtherOccupations);
 
+router.get("/get-productType", getProductTypes);
 export default router;
 
 //  http://localhost:3000/api/signup

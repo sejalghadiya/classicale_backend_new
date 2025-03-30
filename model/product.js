@@ -14,7 +14,7 @@ const ProductSchema = new mongoose.Schema({
     enum: ["ForRent", "ForSell"],
   },
   categories: {
-    type: [String],
+    type: String,
     enum: ["A", "B", "C", "D", "E"],
   },
 

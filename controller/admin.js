@@ -6,6 +6,8 @@ import { UserModel } from "../model/user.js";
 import mongoose from "mongoose";
 import { ConversationModel } from "../model/conversation.js";
 import { CommunicateModel } from "../model/chat.js";
+import { ProductTypeModel } from "../model/product_type.js";
+import { SubProductTypeModel } from "../model/sub_product_type.js";
 import nodemailer from "nodemailer";
 export const adminLogin = async (req, res) => {
   const { email, password } = req.body;
@@ -531,5 +533,98 @@ export const verifyOtp = async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+
+//add Product type
+
+export const addProductType = async (req, res) => {
+  try {
+    console.log("Product type");
+    console.log("+++++++++++++++++");
+    const { name, modelName } = req.body;
+    if (!name) {
+      return res
+        .status(400)
+        .json({ message: "Product type is required" });
+    }
+
+    const newProductType = new ProductTypeModel({ name, modelName });
+
+    await newProductType.save();
+
+    res.status(201).json({
+      message: "Product Type added successfully!",
+      data: newProductType,
+    });
+  } catch (error) {
+    res.status(500).json({
+    message: "Server error!",
+      error: error.message,
+    });
+  }
+};
+
+export const getProductTypes = async (req, res) => {
+  try {
+    const productTypes = await ProductTypeModel.find();
+    res.status(200).json({
+      message: "Product Types fetched successfully!",
+      data: productTypes,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error!", error: error.message });
+  }
+};
+
+
+export const addSubProductType = async (req, res) => {
+  try {
+    const { name, productType } = req.body;
+
+    if (!name || !productType) {
+      return res
+        .status(400)
+        .json({ message: "Name and Product Type are required" });
+    }
+
+    // Check if the product type exists
+    const productTypeExists = await ProductTypeModel.findById(productType);
+    if (!productTypeExists) {
+      return res.status(404).json({ message: "Product Type not found" });
+    }
+
+    const newSubProductType = new SubProductTypeModel({ name, productType });
+    await newSubProductType.save();
+
+    res.status(201).json({
+      message: "SubProduct Type added successfully!",
+      data: newSubProductType,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error!", error: error.message });
+  }
+};
+
+export const getSubProductTypes = async (req, res) => {
+  try {
+    const { productTypeId } = req.query;
+
+    if (!productTypeId) {
+      return res.status(400).json({ message: "Product Type ID is required" });
+    }
+
+    // Find only those subProductTypes which have matching productType
+    const subProductTypes = await SubProductTypeModel.find({
+      productType: productTypeId,
+    }).populate("productType");
+
+    res.status(200).json({
+      message: "SubProduct Types fetched successfully!",
+      data: subProductTypes,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error!", error: error.message });
   }
 };

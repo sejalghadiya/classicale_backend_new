@@ -49,6 +49,6 @@ const conversationSchema = new mongoose.Schema(
 );
 
 export const ConversationModel = mongoose.model(
-  "Conversation",
+  "conversation",
   conversationSchema
 );

@@ -7,4 +7,4 @@ const ConditionSchema = new mongoose.Schema({
   content: String,
 });
 
-export const ConditionModel = mongoose.model("Condition", ConditionSchema);
+export const ConditionModel = mongoose.model("condition", ConditionSchema);

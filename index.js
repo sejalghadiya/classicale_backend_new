@@ -127,24 +127,18 @@ console.log("jsonFile");
 
 app.post("/api/pin", async (req, res) => {
   try {
-    const { tableId } = req.body; // ✅ क्लाइंट से tableId ले रहे हैं
+    const { tableId } = req.body;
 
     if (!tableId) {
       return res.status(400).json({ error: "tableId is required" });
     }
-
-    // ✅ MongoDB से `tableId` के यूजर्स गिनें
     const count = await TableData.countDocuments({ tableId });
-
-    // ✅ अगर यूजर लिमिट 100 से ज्यादा हो गई, तो एक्सेस रोकें
     if (count >= 100) {
       return res.status(403).json({
         success: false,
         message: `This PIN (tableId: ${tableId}) is already used by 100 users. Please try another.`,
       });
     }
-
-    // ✅ यदि limit 100 से कम है, तो डेटा भेजें
     const data = await TableData.find({ tableId });
 
     if (!data || data.length === 0) {
@@ -168,7 +162,7 @@ app.get("/api/check-all-pins", async (req, res) => {
       "isAssigned assignedUsers _id tableId column2"
     );
 
-    // 🔹 Add assignedCount to each PIN
+
     const updatedPins = allPins.map((pin) => ({
       ...pin._doc, // Convert Mongoose document to plain object
       assignedCount: pin.assignedUsers ? pin.assignedUsers.length : 0,
@@ -193,7 +187,6 @@ app.post("/api/assign-pin", async (req, res) => {
     tableId = Number(tableId); // Ensure tableId is number
     console.log(`📌 Converted tableId: ${tableId} (Type: ${typeof tableId})`);
 
-    // ✅ Fetch the existing PIN data from the table
     let existingPin = await TableData.findOne({ tableId });
 
     if (!existingPin) {

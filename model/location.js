@@ -11,4 +11,4 @@ const LocationSchema = new mongoose.Schema({
   subDistrictName: { type: String, required: true },
 });
 
-export const LocationModel = mongoose.model("Location", LocationSchema);
+export const LocationModel = mongoose.model("location", LocationSchema);

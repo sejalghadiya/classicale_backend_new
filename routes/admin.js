@@ -1,5 +1,7 @@
 import express from "express";
 import {
+  addProductType,
+  addSubProductType,
   adminLogin,
   adminVerifyUser,
   deleteProduct,
@@ -7,6 +9,8 @@ import {
   getAllConversation,
   getDeletedMessages,
   getFavoriteProduct,
+  getProductTypes,
+  getSubProductTypes,
   getUser,
   getUserChats,
   getUserProducts,
@@ -41,4 +45,10 @@ router.delete("/deleteUser", authenticateToken, admin, deleteUser);
 router.delete("/deletedMessages", authenticateToken, admin, getDeletedMessages);
 router.post("/verifyUser", adminVerifyUser);
 
+
+router.post("/addProductTypes", addProductType);
+router.post("/addSubProductTypes", addSubProductType);
+
+router.get("/getProductType", getProductTypes),
+router.get("/getSubProduct", getSubProductTypes)
 export default router;

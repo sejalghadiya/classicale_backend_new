@@ -5,4 +5,4 @@ const counterSchema = new mongoose.Schema({
   productId: { type: Number, default: 0 },
 });
 
-export const CounterModel = mongoose.model("Counter", counterSchema);
+export const CounterModel = mongoose.model("counter", counterSchema);
