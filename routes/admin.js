@@ -14,7 +14,8 @@ import {
   getUser,
   getUserChats,
   getUserProducts,
-  updateProduct,
+  updateProduct,addCode,
+  assignCodeToUser
 } from "../controller/admin.js";
 import { getAllProducts } from "../controller/admin.js"; // Import the login function
 import { authenticateToken, admin } from "../auth/admin.js";
@@ -50,5 +51,8 @@ router.post("/addProductTypes", addProductType);
 router.post("/addSubProductTypes", addSubProductType);
 
 router.get("/getProductType", getProductTypes),
-router.get("/getSubProduct", getSubProductTypes)
+router.get("/getSubProduct", getSubProductTypes),
+router.post("/add-code", addCode)
+
+router.post("/assign-code-to-user", assignCodeToUser);
 export default router;

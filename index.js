@@ -20,7 +20,6 @@ import path from "path";
 import cors from "cors";
 import { upload } from "./auth/image.js";
 import LocationRouter from "./routes/location.js";
-import { TableData } from "./model/pin.js";
 import fs from "fs";
 import { UserModel } from "./model/user.js";
 import { setupSocket } from "./socket.js";
@@ -33,7 +32,6 @@ dotenv.config();
 //     methods: ["GET", "POST"],
 //   },
 // });
-import cors from 'cors';
 dotenv.config();
 const app = express();
 app.use(cors());
@@ -533,7 +531,7 @@ app.post("/api/conversation/resetNewMessages", async (req, res) => {
   }
 });
 
-const io = setupSocket(server);
+const io2 = setupSocket(server);
 
 server.listen(PORT, () => {
   console.log(`Server running on http://:${PORT}`);

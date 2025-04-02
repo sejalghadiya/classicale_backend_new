@@ -9,6 +9,7 @@ import { CommunicateModel } from "../model/chat.js";
 import { ProductTypeModel } from "../model/product_type.js";
 import { SubProductTypeModel } from "../model/sub_product_type.js";
 import nodemailer from "nodemailer";
+import { CodeModel } from "../model/pin.js";
 export const adminLogin = async (req, res) => {
   const { email, password } = req.body;
 
@@ -536,7 +537,6 @@ export const verifyOtp = async (req, res) => {
   }
 };
 
-
 //add Product type
 
 export const addProductType = async (req, res) => {
@@ -545,9 +545,7 @@ export const addProductType = async (req, res) => {
     console.log("+++++++++++++++++");
     const { name, modelName } = req.body;
     if (!name) {
-      return res
-        .status(400)
-        .json({ message: "Product type is required" });
+      return res.status(400).json({ message: "Product type is required" });
     }
 
     const newProductType = new ProductTypeModel({ name, modelName });
@@ -560,7 +558,7 @@ export const addProductType = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({
-    message: "Server error!",
+      message: "Server error!",
       error: error.message,
     });
   }
@@ -577,7 +575,6 @@ export const getProductTypes = async (req, res) => {
     res.status(500).json({ message: "Server error!", error: error.message });
   }
 };
-
 
 export const addSubProductType = async (req, res) => {
   try {
@@ -626,5 +623,73 @@ export const getSubProductTypes = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: "Server error!", error: error.message });
+  }
+};
+
+export const addCode = async (req, res) => {
+  try {
+    const { code_data } = req.body;
+
+    if (!code_data || !Array.isArray(code_data) || code_data.length === 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Code is required" });
+    }
+
+    const savedCodes = [];
+
+    for (const item of code_data) {
+      const existingCode = await CodeModel.findOne({ code: item.code });
+
+      if (!existingCode) {
+        const newCode = new CodeModel(item);
+        const savedCode = await newCode.save();
+        savedCodes.push(savedCode);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Codes added successfully!",
+      data: savedCodes,
+    });
+  } catch (error) {
+    console.error("Error adding codes:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Server error!", error: error.message });
+  }
+};
+
+export const assignCodeToUser = async (req, res) => {
+  try {
+    const { userId, codeId } = req.body;
+
+    if (!userId ||!codeId) {
+      return res
+       .status(400)
+       .json({ success: false, message: "User ID and Code ID are required" });
+    }
+
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const code = await CodeModel.findById(codeId);
+    if (!code) {
+      return res.status(404).json({ success: false, message: "Code not found" });
+    }
+
+    if (user.codes.includes(codeId)) {
+      return res
+       .status(400)
+       .json({ success: false, message: "Code is already assigned to this user" });
+    }
+  } catch (error) {
+    console.error("Error assigning codes to user:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Server error!", error: error.message });
   }
 };

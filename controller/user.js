@@ -2,7 +2,7 @@ import { UserModel } from "../model/user.js";
 import { ProductModel } from "../model/product.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { TableData } from "../model/pin.js";
+import { CodeModel } from "../model/pin.js";
 import mongoose from "mongoose";
 import { OccupationModel } from "../model/occupation.js";
 import { read } from "fs";
@@ -296,11 +296,13 @@ export const verifyPin = async (req, res) => {
     });
 
     // Validate PIN against database
-    const existingPin = await TableData.findOne({ column2: pin });
+    const existingPin = await CodeModel.findOne({ code: pin });
     if (!existingPin) {
       console.warn("Invalid PIN entered:", pin);
       return res.status(400).json({ message: "Invalid PIN" });
     }
+    existingPin.use_count += 1;
+    await existingPin.save();
 
     // Assign PIN to user and mark as verified
     user.assignedPins = pin;
@@ -308,16 +310,16 @@ export const verifyPin = async (req, res) => {
     await user.save();
     console.info("PIN assigned and verified for user:", userId);
 
-    // Update TableData with assigned user
+    // Update CodeModel with assigned user
     const userIdObject = new mongoose.Types.ObjectId(user._id);
-    await TableData.findOneAndUpdate(
-      { column2: pin },
+    await CodeModel.findOneAndUpdate(
+      { code: pin },
       {
         $addToSet: { assignedUsers: userIdObject },
         $inc: { assignedCount: 1 },
       }
     );
-    console.info("Updated TableData for PIN:", pin);
+    console.info("Updated CodeModel for PIN:", pin);
 
     return res.status(200).json({ message: "PIN verified successfully!" });
   } catch (error) {
