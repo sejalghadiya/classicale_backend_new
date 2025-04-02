@@ -32,6 +32,7 @@ dotenv.config();
 //     methods: ["GET", "POST"],
 //   },
 // });
+
 dotenv.config();
 const app = express();
 app.use(cors());
@@ -40,7 +41,7 @@ const server = http.createServer(app);
 // Create Socket.IO server
 export const io = new Server(server, {
   cors: {
-    origin: "*", // Allow all origins (can restrict in production)
+    origin: "*", 
     methods: ["GET", "POST"],
   },
 });
@@ -64,12 +65,12 @@ async function importPin() {
   try {
     const data = fs.readFileSync(filePath, "utf8");
 
-    let records = JSON.parse(data); // JSON को Object में बदलें
+    let records = JSON.parse(data); 
     records = records.map((item) => ({
-      tableId: item["Table 1"], // "Table 1" को "tableId" में बदलें
+      tableId: item["Table 1"], 
       column2: item.Column2,
-      isAssigned: false, // ✅ Default value
-      assignedUsers: [], // ✅ Initially no assigned users
+      isAssigned: false, 
+      assignedUsers: [], 
     }));
 
     await TableData.deleteMany({});

@@ -10,6 +10,7 @@ import {
   softDeleteProduct,
   showUserAddProduct,
   searchProduct,
+  getAllProducts,
 } from "../controller/product.js";
 import { authenticateUser } from "../auth/middle.js";
 // In routes or other files
@@ -42,4 +43,6 @@ router.post(
   upload.fields([{ name: "images", maxCount: 5 }]),
   addProduct
 );
+
+router.get("/get-product", getAllProducts);
 export default router;

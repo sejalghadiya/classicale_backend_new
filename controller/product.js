@@ -796,6 +796,33 @@ export const addProduct = async (req, res) => {
   }
 };
 
+export const getAllProducts = async (req, res) => {
+  try {
+    const allProducts = {};
+
+    // Iterate over all product models
+    for (const [key, Model] of Object.entries(productModels)) {
+      allProducts[key] = await Model.find({})
+        .populate({
+          path: "productType",
+          select: "-modelName",
+        })
+        .populate({
+          path: "subProductType",
+          select: "-modelName -productType",
+        });
+    }
+
+    return res.status(200).json({
+      message: "All products fetched successfully",
+      products: allProducts,
+    });
+  } catch (error) {
+    console.log("❌ Server Error:", error.message);
+    res.status(500).json({ message: "Server error!", error: error.message });
+  }
+};
+
 // export const addProduct = async (req, res) => {
 //   try {
 //     console.log("📌 Request Body:", req.body);
