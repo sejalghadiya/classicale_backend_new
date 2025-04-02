@@ -3,8 +3,8 @@ import mongoose from "mongoose";
 const ServicesSchema = new mongoose.Schema({
   service_job: {
     type: String,
-    enum: ["Service", "Job"],
   },
+  service_type: {type: [String]},
   adTitle: { type: [String] },
   description: { type: [String] },
   images: [{ type: String }],

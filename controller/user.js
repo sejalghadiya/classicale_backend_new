@@ -646,14 +646,39 @@ export const getProductTypes = async (req, res) => {
   try {
     const sub_product_types = await SubProductTypeModel.find().populate({
       path: "productType",
-      select: "-modelName", // exclude modelName
     });
 
     console.log(sub_product_types);
 
-    return res.status(200).json(sub_product_types);
+    return res
+      .status(200)
+      .json({
+        success: true,
+        message: "Product sub type fetch successfully.",
+        sub_product_types,
+      });
   } catch (err) {
     console.error("Error fetching product types:", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Something went wrong" });
+  }
+};
+
+export const getProductSubType = async (req, res) => {
+  try {
+    console.log("Product Sub Type");
+    const { sub_product_type_id } = req.params;
+    console.log(sub_product_type_id);
+    const sub_product_types = await SubProductTypeModel.find({
+      productType: sub_product_type_id,
+    }).populate({
+      path: "productType",
+    });
+
+    return res.status(200).json({success:true,message:"sub product type fetch successfully.",sub_product_types});
+  } catch (err) {
+    console.error("Error fetching product sub types:", err);
     return res.status(500).json({ message: "Something went wrong" });
   }
 };
