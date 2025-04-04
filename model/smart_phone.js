@@ -11,6 +11,7 @@ const SmartPhoneSchema = new mongoose.Schema({
   createdTime: { type: Date, default: Date.now },
   updatedTime: { type: Date, default: Date.now },
   isDeleted: { type: Boolean, default: false },
+  images: { type: [String] },
 
   productType: { type: mongoose.Schema.Types.ObjectId, ref: "ProductType" },
   subProductType: {

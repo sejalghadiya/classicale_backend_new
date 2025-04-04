@@ -1,10 +1,7 @@
 import mongoose from "mongoose";
 
 const OtherSchema = new mongoose.Schema({
-  service_job: {
-    type: String,
-    enum: ["Service", "Job"],
-  },
+  price: { type: [String]},
   adTitle: { type: [String] },
   description: { type: [String] },
   images: [{ type: String }],

@@ -65,6 +65,7 @@ export const userSignUp = async (req, res) => {
       area,
       aadharNumber,
       userCategory,
+      otherOccupationName,
     } = req.body;
 
     // ✅ Step 1: Email Validation
@@ -108,6 +109,22 @@ export const userSignUp = async (req, res) => {
       read = ["B", "C", "D", "E"];
       write = ["C"];
     }
+    let newOccupationId = occupationId;
+    if (occupationId === "67d988345682680a67eee2c8") {
+      const occupation = await OccupationModel.findOne({
+        name: otherOccupationName,
+      });
+
+      if (occupation) {
+        return res.status(400).json({ message: "Occupation already exist." });
+      }
+
+      const occupationNew = new OccupationModel({
+        name: otherOccupationName,
+      });
+      await occupationNew.save();
+      newOccupationId = occupationNew._id;
+    }
 
     // Create user
     const newUser = new UserModel({
@@ -121,7 +138,7 @@ export const userSignUp = async (req, res) => {
       password: hashedPassword,
       gender,
       DOB,
-      occupationId: new mongoose.Types.ObjectId(occupationId),
+      occupationId: new mongoose.Types.ObjectId(newOccupationId),
       state,
       district,
       country,
@@ -152,7 +169,7 @@ export const userSignUp = async (req, res) => {
 };
 export const userLogin = async (req, res) => {
   const { email, password, userCategory } = req.body;
-
+  console.log("User:---", email, password, userCategory);
   try {
     // ✅ Find User
     const user = await UserModel.findOne({ email });
@@ -169,6 +186,7 @@ export const userLogin = async (req, res) => {
       return res.status(400).json({ message: "Invalid password" });
     }
 
+    console.log("++++++++++++++++++++++++++++++++++++++++++++++++");
     // ✅ Check if First-Time Login
     let requiresVerification = false;
     let verificationType = null;
@@ -300,6 +318,13 @@ export const verifyPin = async (req, res) => {
     if (!existingPin) {
       console.warn("Invalid PIN entered:", pin);
       return res.status(400).json({ message: "Invalid PIN" });
+    }
+
+    if (existingPin.use_count >= existingPin.max_count) {
+      console.warn("MAx limit reach", pin);
+      return res
+        .status(400)
+        .json({ message: "Max user limit reach in this pin." });
     }
     existingPin.use_count += 1;
     await existingPin.save();
@@ -652,13 +677,11 @@ export const getProductTypes = async (req, res) => {
 
     console.log(sub_product_types);
 
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "Product sub type fetch successfully.",
-        sub_product_types,
-      });
+    return res.status(200).json({
+      success: true,
+      message: "Product sub type fetch successfully.",
+      sub_product_types,
+    });
   } catch (err) {
     console.error("Error fetching product types:", err);
     return res
@@ -678,7 +701,11 @@ export const getProductSubType = async (req, res) => {
       path: "productType",
     });
 
-    return res.status(200).json({success:true,message:"sub product type fetch successfully.",sub_product_types});
+    return res.status(200).json({
+      success: true,
+      message: "sub product type fetch successfully.",
+      sub_product_types,
+    });
   } catch (err) {
     console.error("Error fetching product sub types:", err);
     return res.status(500).json({ message: "Something went wrong" });

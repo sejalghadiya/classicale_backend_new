@@ -11,4 +11,6 @@ const pinModel = new mongoose.Schema(
   }
 );
 
+
+
 export const CodeModel = mongoose.model("code", pinModel);

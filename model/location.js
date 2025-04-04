@@ -1,14 +1,18 @@
 import mongoose from "mongoose";
 
 const LocationSchema = new mongoose.Schema({
-  countryCode: { type: String, required: true },
-  postalCode: { type: String, required: true },
-  locationName: { type: String, required: true },
-  state: { type: String, required: true },
-  stateCode: { type: String, required: true },
-  district: { type: String, required: true },
-  subDistrictCode: { type: String, required: true },
-  subDistrictName: { type: String, required: true },
+  Country_Code: { type: String, required: true },
+
+  Postal_Code: { type: String, required: true },
+  Location_Name: { type: String, required: true },
+  State: { type: String, required: true },
+
+  State_Code: { type: String, required: true },
+
+  District: { type: String, required: true },
+
+  Sub_district_Code: { type: String, required: true },
+  Sub_district_Name: { type: String, required: true },
 });
 
 export const LocationModel = mongoose.model("location", LocationSchema);

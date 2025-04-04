@@ -18,6 +18,7 @@ import { LandModel } from "../model/property_land.js";
 import { ServicesModel } from "../model/services.js";
 import { SmartPhoneModel } from "../model/smart_phone.js";
 import { OtherModel } from "../model/other.js";
+import {PropertyModel} from "../model/property.js";
 dotenv.config();
 
 export const addProduct2 = async (req, res) => {
@@ -728,26 +729,30 @@ const productModels = {
   smart_phone: SmartPhoneModel,
   services: ServicesModel,
   other: OtherModel,
+  property: PropertyModel,
 };
 //add Bike
 export const addProduct = async (req, res) => {
   try {
-    console.log("📌 Request Body:", req.body);
-    console.log("📸 Uploaded Files:", req.files);
+    // console.log("📌 Request Body:", req.body);
+    // console.log("📸 Uploaded Files:", req.files);
 
     let { productType, subProductType, data } = req.body;
 
     // ✅ Check if productType and subProductType are provided
     if (!productType) {
+      console.log("missing product type");
       return res.status(400).json({ message: "Product Type is required" });
     }
     if (!subProductType) {
+      console.log("missing sub-product type");
       return res.status(400).json({ message: "Sub-Product Type is required" });
     }
 
     // ✅ Validate if productType exists
     const _productType = await ProductTypeModel.findById(productType);
     if (!_productType) {
+      console.log("product type not found in db");
       return res.status(404).json({ message: "Product Type not found" });
     }
 
@@ -758,6 +763,7 @@ export const addProduct = async (req, res) => {
     });
 
     if (!_subProductType) {
+      console.log("Sub Product Type not found");
       return res.status(404).json({
         message:
           "SubProduct Type not found or does not belong to this Product Type",
@@ -767,6 +773,7 @@ export const addProduct = async (req, res) => {
     // ✅ Dynamically get the correct model
     const Model = productModels[_productType.modelName];
     if (!Model) {
+      console.log("model not found ");
       return res.status(400).json({ message: "Invalid Model Name" });
     }
 

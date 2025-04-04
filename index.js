@@ -23,6 +23,7 @@ import LocationRouter from "./routes/location.js";
 import fs from "fs";
 import { UserModel } from "./model/user.js";
 import { setupSocket } from "./socket.js";
+import { Redis } from "ioredis";
 dotenv.config();
 
 // Create Socket.IO server
@@ -41,7 +42,7 @@ const server = http.createServer(app);
 // Create Socket.IO server
 export const io = new Server(server, {
   cors: {
-    origin: "*", 
+    origin: "*",
     methods: ["GET", "POST"],
   },
 });
@@ -57,34 +58,34 @@ mongoose
   .connect(uri, {})
   .then(() => {
     console.log("Connected to MongoDB Atlas!");
-    importLocationData();
   })
   .catch((error) => console.error("Error connecting to MongoDB:", error));
+
 console.log("++hgdsjdbsj++");
-async function importPin() {
-  try {
-    const data = fs.readFileSync(filePath, "utf8");
+// async function importPin() {
+//   try {
+//     const data = fs.readFileSync(filePath, "utf8");
 
-    let records = JSON.parse(data); 
-    records = records.map((item) => ({
-      tableId: item["Table 1"], 
-      column2: item.Column2,
-      isAssigned: false, 
-      assignedUsers: [], 
-    }));
+//     let records = JSON.parse(data);
+//     records = records.map((item) => ({
+//       tableId: item["Table 1"],
+//       column2: item.Column2,
+//       isAssigned: false,
+//       assignedUsers: [],
+//     }));
 
-    await TableData.deleteMany({});
+//    // await TableData.deleteMany({});
 
-    // ✅ MongoDB में Insert करें
-    await TableData.insertMany(records);
-    console.log("✅ Data inserted successfully!");
-  } catch (error) {
-    console.error("Error reading or inserting data:", error);
-  }
-}
+//     // ✅ MongoDB में Insert करें
+//     await TableData.insertMany(records);
+//     console.log("✅ Data inserted successfully!");
+//   } catch (error) {
+//     console.error("Error reading or inserting data:", error);
+//   }
+// }
 
-importPin();
-console.log("jsonFile");
+// importPin();
+// console.log("jsonFile");
 // export async function importJson() {
 //   try {
 //   const data = fs.readFileSync(fileName, "utf8");
@@ -171,7 +172,6 @@ app.get("/api/check-all-pins", async (req, res) => {
       "isAssigned assignedUsers _id tableId column2"
     );
 
-
     const updatedPins = allPins.map((pin) => ({
       ...pin._doc, // Convert Mongoose document to plain object
       assignedCount: pin.assignedUsers ? pin.assignedUsers.length : 0,
@@ -255,34 +255,34 @@ app.post("/api/assign-pin", async (req, res) => {
   }
 });
 
-const importLocationData = async () => {
-  try {
-    const existingLocations = await LocationModel.countDocuments();
+// const importLocationData = async () => {
+//   try {
+//     const existingLocations = await LocationModel.countDocuments();
 
-    if (existingLocations > 0) {
-      console.log("Data already exists in the database. Skipping insertion.");
-      return;
-    }
-    const jsonData = JSON.parse(fs.readFileSync("./data/data.json", "utf8"));
+//     if (existingLocations > 0) {
+//       console.log("Data already exists in the database. Skipping insertion.");
+//       return;
+//     }
+//     const jsonData = JSON.parse(fs.readFileSync("./data/data.json", "utf8"));
 
-    const formattedData = jsonData.slice(0, 20).map((item) => ({
-      countryCode: item.Country_Code || "default-country-code",
-      postalCode: item.Postal_Code || "000000",
-      stateCode: item.State_Code || "default-state-code",
-      state: item.State,
-      district: item.District,
-      locationName: item.Location_Name,
-      subDistrictCode: item.Sub_district_Code || "default-subdistrict-code",
-      subDistrictName: item.Sub_district_Name || "default-subdistrict-name",
-    }));
-    await LocationModel.insertMany(formattedData);
-    console.log("Location data imported successfully!");
-  } catch (error) {
-    console.error("Error importing location data:", error.message);
-  }
-};
+//     const formattedData = jsonData.slice(0, 20).map((item) => ({
+//       countryCode: item.Country_Code || "default-country-code",
+//       postalCode: item.Postal_Code || "000000",
+//       stateCode: item.State_Code || "default-state-code",
+//       state: item.State,
+//       district: item.District,
+//       locationName: item.Location_Name,
+//       subDistrictCode: item.Sub_district_Code || "default-subdistrict-code",
+//       subDistrictName: item.Sub_district_Name || "default-subdistrict-name",
+//     }));
+//     await LocationModel.insertMany(formattedData);
+//     console.log("Location data imported successfully!");
+//   } catch (error) {
+//     console.error("Error importing location data:", error.message);
+//   }
+// };
 
-importLocationData();
+//importLocationData();
 
 app.get("/api/locations", async (req, res) => {
   try {
@@ -297,15 +297,58 @@ app.get("/api/locations", async (req, res) => {
   }
 });
 
+// app.get("/api/states", async (req, res) => {
+//   try {
+//     const data = await LocationModel.find();
+//     console.log(data);
+//     if (!data || data.length === 0) {
+//       return res.status(500).json({ error: "Data could not be loaded." });
+//     }
+//     const states = [...new Set(data.map((item) => item.State))];
+//     res.json({
+//       success: true,
+//       message: "State List fetch successfully",
+//       states,
+//     });
+//   } catch (error) {
+//     console.error("Error:", error);
+//     res.status(500).json({ error: "An error occurred while fetching states." });
+//   }
+// });
+// const redis = new Redis(); // Defaults to localhost:6379
+
+let stateList = []; // Cached state list in memory
+
 app.get("/api/states", async (req, res) => {
   try {
+    // Check if stateList is already populated
+    if (stateList.length > 0) {
+      console.log("Returning cached data from memory");
+      return res.json({
+        success: true,
+        message: "State List fetched from memory cache",
+        states: stateList,
+      });
+    }
+
+    // Fetch data from DB
     const data = await LocationModel.find();
-    console.log(data);
     if (!data || data.length === 0) {
       return res.status(500).json({ error: "Data could not be loaded." });
     }
-    const states = [...new Set(data.map((item) => item.state))];
-    res.json(states);
+
+    const states = [...new Set(data.map((item) => item.State))];
+
+    // Store in memory
+    stateList = states;
+
+    console.log("Memory cache updated");
+
+    res.json({
+      success: true,
+      message: "State List fetched successfully",
+      states,
+    });
   } catch (error) {
     console.error("Error:", error);
     res.status(500).json({ error: "An error occurred while fetching states." });
@@ -315,45 +358,77 @@ app.get("/api/states", async (req, res) => {
 app.get("/api/districts/:state", async (req, res) => {
   try {
     const state = req.params.state;
-    const data = await LocationModel.find({ state }); // Fetch data for the selected state
+    const data = await LocationModel.find({ State: state }); // Fetch data for the selected state
     if (!data || data.length === 0) {
       return res.status(500).json({ error: "Data could not be loaded." });
     }
 
     // Fetch districts for the selected state
-    const districts = [...new Set(data.map((item) => item.district))];
-    res.json(districts);
+    const districts = [...new Set(data.map((item) => item.District))];
+    res.json({
+      success: true,
+      message: "district fetch successfully",
+      districts,
+    });
   } catch (error) {
     res
       .status(500)
       .json({ error: "An error occurred while fetching districts." });
   }
 });
-
-app.get("/api/location/:district", async (req, res) => {
+app.get("/api/locations/:district", async (req, res) => {
   try {
     const district = req.params.district;
-    const data = await LocationModel.find({ district }); // Fetch data for the selected district
+
+    // Fetch locations where district matches
+    const data = await LocationModel.find({ District: district });
+
     if (!data || data.length === 0) {
-      return res.status(500).json({ error: "Data could not be loaded." });
+      return res
+        .status(404)
+        .json({ message: `No locations found for district ${district}.` });
     }
 
-    // Fetch all location names for the selected district
-    const locations = [...new Set(data.map((item) => item.locationName))];
+    // Extract unique location names
+    const locations = [...new Set(data.map((item) => item.Location_Name))];
 
-    if (locations.length > 0) {
-      res.json(locations);
-    } else {
-      res.status(404).json({
-        message: `No locations found for district ${district}.`,
-      });
-    }
+    res.json({
+      success: true,
+      message: "Locations fetched successfully",
+      locations,
+    });
   } catch (error) {
+    console.error("Error fetching locations:", error);
     res
       .status(500)
       .json({ error: "An error occurred while fetching locations." });
   }
 });
+
+// app.get("/api/location/:district", async (req, res) => {
+//   try {
+//     const district = req.params.district;
+//     const data = await LocationModel.find({ District: district }); // Fetch data for the selected district
+//     if (!data || data.length === 0) {
+//       return res.status(500).json({ error: "Data could not be loaded." });
+//     }
+
+//     // Fetch all location names for the selected district
+//     const locations = [...new Set(data.map((item) => item.Location_Name))];
+
+//     if (locations.length > 0) {
+//       res.json(locations);
+//     } else {
+//       res.status(404).json({
+//         message: `No locations found for district ${district}.`,
+//       });
+//     }
+//   } catch (error) {
+//     res
+//       .status(500)
+//       .json({ error: "An error occurred while fetching locations." });
+//   }
+// });
 
 createAdminIfNotExists();
 
@@ -398,7 +473,7 @@ console.log("fileName:---------", __filename);
 
 app.use("/public", express.static(path.join(__dirname, "public")));
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, "public")));
 app.use("/api/products", ProductRouter);
 app.use("/api/admin", AdminRouter);
 app.use("/api/user", UserRouter);
