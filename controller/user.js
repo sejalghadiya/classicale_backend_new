@@ -8,6 +8,7 @@ import { OccupationModel } from "../model/occupation.js";
 import { read } from "fs";
 import { SubProductTypeModel } from "../model/sub_product_type.js";
 import { ProductTypeModel } from "../model/product_type.js";
+import { saveBase64Image } from "../utils/image_store.js";
 
 // Import Twilio using ES module syntax
 //import twilio from 'twilio';
@@ -66,13 +67,17 @@ export const userSignUp = async (req, res) => {
       aadharNumber,
       userCategory,
       otherOccupationName,
+      aadharImage,
+      profileImage,
     } = req.body;
 
     // ✅ Step 1: Email Validation
-    if (!email.endsWith("@gmail.com")) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    console.log(req.body);
+    if (!emailRegex.test(email)) {
       return res
         .status(400)
-        .json({ message: "Only Gmail ID (@gmail.com) allowed!" });
+        .json({ message: "Please enter a valid email address!" });
     }
 
     // ✅ Step 2: Check if user already exists
@@ -85,16 +90,49 @@ export const userSignUp = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Handle file paths correctly
-    const profileImagePath = req.files?.profileImage
-      ? `/public/profileImages/${req.files.profileImage[0].filename}`
-      : null;
-    console.log(req.files?.profileImage);
-    const aadhaarFrontPath = req.files?.aadhaarCardImage1
-      ? `/public/aadharcardImages/${req.files.aadhaarCardImage1[0].filename}`
-      : null;
-    const aadhaarBackPath = req.files?.aadhaarCardImage2
-      ? `/public/aadharcardImages/${req.files.aadhaarCardImage2[0].filename}`
-      : null;
+    let profileImagePath = "";
+    let aadhaarFrontPath = "";
+    let aadhaarBackPath = "";
+    if (profileImage) {
+      profileImagePath = saveBase64Image(
+        profileImage,
+        "profileImages",
+        "profile"
+      );
+    } else {
+      return res.status(400).json({ message: "profile image not found" });
+    }
+
+    if (aadharImage?.front) {
+      aadhaarFrontPath = saveBase64Image(
+        aadharImage.front,
+        "aadharcardImages",
+        "aadhar_front"
+      );
+    } else {
+      return res.status(400).json({ message: "Aadhar card image not found" });
+    }
+
+    if (aadharImage?.back) {
+      aadhaarBackPath = saveBase64Image(
+        aadharImage.back,
+        "aadharcardImages",
+        "aadhar_back"
+      );
+    } else {
+      return res.status(400).json({ message: "Aadhar card image not found" });
+    }
+
+    // const profileImagePath = req.files?.profileImage
+    //   ? `/public/profileImages/${req.files.profileImage[0].filename}`
+    //   : null;
+    // console.log(req.files?.profileImage);
+    // const aadhaarFrontPath = req.files?.aadhaarCardImage1
+    //   ? `/public/aadharcardImages/${req.files.aadhaarCardImage1[0].filename}`
+    //   : null;
+    // const aadhaarBackPath = req.files?.aadhaarCardImage2
+    //   ? `/public/aadharcardImages/${req.files.aadhaarCardImage2[0].filename}`
+    //   : null;
 
     // Determine if admin verification is required
     let isAdminVerify = userCategory === "A";

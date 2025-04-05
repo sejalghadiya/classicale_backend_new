@@ -12,8 +12,6 @@ import CommunicateRouter from "./routes/chat.js";
 import ConversationRouter from "./routes/conversation.js";
 import AdminRouter from "./routes/admin.js";
 import Admin from "./model/admin.js";
-import { CommunicateModel } from "./model/chat.js";
-import { ConversationModel } from "./model/conversation.js";
 import { LocationModel } from "./model/location.js";
 import SendOtpRouter from "./routes/sendOtp.js";
 import path from "path";
@@ -36,6 +34,9 @@ dotenv.config();
 
 dotenv.config();
 const app = express();
+app.use(express.json({ limit: "10mb" })); // or even higher like '50mb'
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
+
 app.use(cors());
 const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
@@ -51,8 +52,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 const __filename = new URL(import.meta.url).pathname;
 const __dirname = path.dirname(__filename);
-const filePath = path.join(__dirname, "pin/pin.json");
-const fileName = path.join(__dirname, "condition/ai_future.json");
 const uri = process.env.MONGODB_URL;
 mongoose
   .connect(uri, {})

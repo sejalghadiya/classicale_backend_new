@@ -11,6 +11,7 @@ import {
   showUserAddProduct,
   searchProduct,
   getAllProducts,
+  getProductById,
 } from "../controller/product.js";
 import { authenticateUser } from "../auth/middle.js";
 // In routes or other files
@@ -45,4 +46,5 @@ router.post(
 );
 
 router.get("/get-product", getAllProducts);
+router.get("/get-product-by-id", getProductById);
 export default router;

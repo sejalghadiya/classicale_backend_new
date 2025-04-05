@@ -29,11 +29,11 @@ router.post("/login", userLogin);
 router.post(
   "/signup",
   upload.fields([
-    { name: "profileImage", maxCount: 1 },
-    { name: "aadhaarCardImage1", maxCount: 1 },
-    { name: "aadhaarCardImage2", maxCount: 1 },
+    // { name: "profileImage", maxCount: 1 },
+    // { name: "aadhaarCardImage1", maxCount: 1 },
+    // { name: "aadhaarCardImage2", maxCount: 1 },
   ]),
-  userSignUp,
+  userSignUp
 );
 router.put(
   "/updateUser",

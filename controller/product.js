@@ -18,7 +18,7 @@ import { LandModel } from "../model/property_land.js";
 import { ServicesModel } from "../model/services.js";
 import { SmartPhoneModel } from "../model/smart_phone.js";
 import { OtherModel } from "../model/other.js";
-import {PropertyModel} from "../model/property.js";
+import { PropertyModel } from "../model/property.js";
 dotenv.config();
 
 export const addProduct2 = async (req, res) => {
@@ -826,6 +826,48 @@ export const getAllProducts = async (req, res) => {
     });
   } catch (error) {
     console.log("❌ Server Error:", error.message);
+    res.status(500).json({ message: "Server error!", error: error.message });
+  }
+};
+
+export const getProductById = async (req, res) => {
+  try {
+    const { productId, model } = req.query;
+
+    // Validate input
+    if (!productId || !model) {
+      return res
+        .status(400)
+        .json({ message: "Product ID and Type are required" });
+    }
+
+    // Find the correct model
+    const Model = productModels[model];
+    if (!Model) {
+      return res.status(400).json({ message: "Invalid Product Type" });
+    }
+
+    // Fetch the product
+    const product = await Model.findById(productId)
+      .populate({
+        path: "productType",
+        select: "-modelName",
+      })
+      .populate({
+        path: "subProductType",
+        select: "-modelName -productType",
+      });
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    return res.status(200).json({
+      message: "Product fetched successfully",
+      product,
+    });
+  } catch (error) {
+    console.error("❌ Server Error:", error);
     res.status(500).json({ message: "Server error!", error: error.message });
   }
 };
