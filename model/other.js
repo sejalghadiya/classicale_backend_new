@@ -1,11 +1,10 @@
 import mongoose from "mongoose";
 
 const OtherSchema = new mongoose.Schema({
-  price: { type: [String]},
-  adTitle: { type: [String] },
+  price: { type: [String] },
+  title: { type: [String] },
   description: { type: [String] },
-  images: [{ type: String }],
-
+  productImages: [{ type: String }],
   productType: { type: mongoose.Schema.Types.ObjectId, ref: "ProductType" },
   subProductType: {
     type: mongoose.Schema.Types.ObjectId,

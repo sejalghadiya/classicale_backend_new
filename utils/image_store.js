@@ -1,3 +1,4 @@
+import { log } from "console";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -8,6 +9,7 @@ const __dirname = path.dirname(__filename);
 
 // Utility to save a base64 image
 export const saveBase64Image = (base64String, folderPath, filenamePrefix) => {
+  console.log(base64String);
   const matches = base64String.match(/^data:(image\/\w+);base64,(.+)$/);
   if (!matches || matches.length !== 3) {
     throw new Error("Invalid base64 image string");

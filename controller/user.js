@@ -72,13 +72,24 @@ export const userSignUp = async (req, res) => {
     } = req.body;
 
     // ✅ Step 1: Email Validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // console.log(req.body);
+    // if (!emailRegex.test(email)) {
+    //   return res
+    //     .status(400)
+    //     .json({ message: "Please enter a valid email address!" });
+    // }
+
+    const emailRegex = /^[a-zA-Z0-9]+@[a-zA-Z0-9]+\.[a-zA-Z]+$/;
+
     console.log(req.body);
+
     if (!emailRegex.test(email)) {
       return res
         .status(400)
         .json({ message: "Please enter a valid email address!" });
     }
+
 
     // ✅ Step 2: Check if user already exists
     const existingUser = await UserModel.findOne({ email, userCategory });

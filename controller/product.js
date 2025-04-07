@@ -19,6 +19,7 @@ import { ServicesModel } from "../model/services.js";
 import { SmartPhoneModel } from "../model/smart_phone.js";
 import { OtherModel } from "../model/other.js";
 import { PropertyModel } from "../model/property.js";
+import { saveBase64Image } from "../utils/image_store.js";
 dotenv.config();
 
 export const addProduct2 = async (req, res) => {
@@ -731,26 +732,28 @@ const productModels = {
   other: OtherModel,
   property: PropertyModel,
 };
-//add Bike
+//add Product
 export const addProduct = async (req, res) => {
   try {
     // console.log("📌 Request Body:", req.body);
     // console.log("📸 Uploaded Files:", req.files);
+    // productType, subProductType,
+    let { data } = req.body;
 
-    let { productType, subProductType, data } = req.body;
-
+    // console.log("All Data:---", req.body);
+    console.log("++++++++");
     // ✅ Check if productType and subProductType are provided
-    if (!productType) {
+    if (!data.productType) {
       console.log("missing product type");
       return res.status(400).json({ message: "Product Type is required" });
     }
-    if (!subProductType) {
+    if (!data.subProductType) {
       console.log("missing sub-product type");
       return res.status(400).json({ message: "Sub-Product Type is required" });
     }
 
     // ✅ Validate if productType exists
-    const _productType = await ProductTypeModel.findById(productType);
+    const _productType = await ProductTypeModel.findById(data.productType);
     if (!_productType) {
       console.log("product type not found in db");
       return res.status(404).json({ message: "Product Type not found" });
@@ -758,8 +761,8 @@ export const addProduct = async (req, res) => {
 
     // ✅ Validate if subProductType exists under the correct productType
     const _subProductType = await SubProductTypeModel.findOne({
-      _id: subProductType,
-      productType: productType,
+      _id: data.subProductType,
+      productType: data.productType,
     });
 
     if (!_subProductType) {
@@ -769,7 +772,30 @@ export const addProduct = async (req, res) => {
           "SubProduct Type not found or does not belong to this Product Type",
       });
     }
+    let productImages = data.productImages;
+    let imagePaths = [];
+    // 🛠 Handle case where productImages is a JSON string instead of an array
+    if (typeof productImages === "string") {
+      try {
+        productImages = JSON.parse(productImages);
+      } catch (err) {
+        console.error("❌ Failed to parse productImages:", err);
+        productImages = [];
+      }
+    }
 
+    for (const base64Image of productImages) {
+      const imagePath = saveBase64Image(
+        base64Image,
+        "productImages",
+        "product"
+      );
+      imagePaths.push(imagePath);
+    }
+    data.images = imagePaths; // Add saved image paths to the data object
+    // }
+    console.log("++++++++++++++++++++++++++++++++++++++++++++++++");
+    console.log(imagePaths);
     // ✅ Dynamically get the correct model
     const Model = productModels[_productType.modelName];
     if (!Model) {
@@ -778,16 +804,16 @@ export const addProduct = async (req, res) => {
     }
 
     // ✅ Parse `data` as JSON (since it is sent as a string in multipart requests)
-    if (typeof data === "string") {
-      data = JSON.parse(data);
-    }
+    // if (typeof data === "string") {
+    //   data = JSON.parse(data);
+    // }
 
     // ✅ Extract image file paths and add them to `data`
-    if (req.files && req.files["images"]) {
-      data.images = req.files["images"].map(
-        (file) => `/images/${file.filename}`
-      );
-    }
+    // if (req.files && req.files["images"]) {
+    //   data.images = req.files["images"].map(
+    //     (file) => `/images/${file.filename}`
+    //   );
+    // }
 
     // ✅ Save the product dynamically
     const product = new Model(data);
@@ -800,6 +826,104 @@ export const addProduct = async (req, res) => {
   } catch (error) {
     console.log("❌ Server Error:", error.message);
     res.status(500).json({ message: "Server error!", error: error.message });
+  }
+};
+
+// add other product
+export const addOtherProduct = async (req, res) => {
+  try {
+    let { data } = req.body;
+
+    if (!data?.productType) {
+      console.log("❌ Missing product type");
+      return res.status(400).json({ message: "Product Type is required" });
+    }
+
+    // 🔁 Handle subProductType or create a new one
+    if (!data.subProductType) {
+      if (!data.subProductTypeName) {
+        console.log("❌ Missing sub-product type name");
+        return res
+          .status(400)
+          .json({ message: "Sub-Product Name is required" });
+      }
+
+      const existingSub = await SubProductTypeModel.findOne({
+        name: data.subProductTypeName,
+      });
+
+      if (existingSub) {
+        return res
+          .status(400)
+          .json({ message: "Product Type already exists." });
+      }
+
+      const subProductType = new SubProductTypeModel({
+        name: data.subProductTypeName,
+        productType: data.productType,
+      });
+
+      await subProductType.save();
+      data.subProductType = subProductType._id;
+    }
+
+    // 🔍 Validate Product Type
+    const productTypeDoc = await ProductTypeModel.findById(data.productType);
+    if (!productTypeDoc) {
+      return res.status(404).json({ message: "Product Type not found" });
+    }
+
+    // 🔍 Validate SubProduct Type
+    const subProductTypeDoc = await SubProductTypeModel.findOne({
+      _id: data.subProductType,
+      productType: data.productType,
+    });
+
+    if (!subProductTypeDoc) {
+      return res.status(404).json({
+        message: "SubProduct Type not found or not linked to the Product Type",
+      });
+    }
+
+    // 🖼️ Handle product images
+    let productImages = data.productImages;
+    let imagePaths = [];
+
+    if (typeof productImages === "string") {
+      try {
+        productImages = JSON.parse(productImages);
+      } catch (err) {
+        console.error("❌ Failed to parse productImages:", err);
+        productImages = [];
+      }
+    }
+
+    if (Array.isArray(productImages)) {
+      for (const base64Image of productImages) {
+        const imagePath = saveBase64Image(
+          base64Image,
+          "productImages",
+          "product"
+        );
+        imagePaths.push(imagePath);
+      }
+    }
+
+    data.images = imagePaths;
+
+    // ✅ Save the product
+    const product = new OtherModel(data);
+    await product.save();
+
+    return res.status(200).json({
+      message: `${productTypeDoc.name} added successfully`,
+      product,
+    });
+  } catch (error) {
+    console.error("❌ Server Error:", error.message);
+    return res
+      .status(500)
+      .json({ message: "Server error!", error: error.message });
   }
 };
 

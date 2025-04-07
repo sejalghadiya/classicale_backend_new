@@ -12,6 +12,7 @@ import {
   searchProduct,
   getAllProducts,
   getProductById,
+  addOtherProduct,
 } from "../controller/product.js";
 import { authenticateUser } from "../auth/middle.js";
 // In routes or other files
@@ -38,10 +39,10 @@ router.get("/getProduct", showUserAddProduct);
 router.put("/update", authenticateUser, updateProduct);
 router.post("/favorites", authenticateUser, addFavoriteProduct);
 router.get("/getFavoriteProduct", authenticateUser, getFavoriteProducts);
+router.post("/add-other-product", addOtherProduct);
 
 router.post(
   "/add",
-  upload.fields([{ name: "images", maxCount: 5 }]),
   addProduct
 );
 
