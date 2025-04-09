@@ -2,11 +2,10 @@ import mongoose from "mongoose";
 
 const PropertySchema = new mongoose.Schema({
   type: { type: String, enum: ["ForRent", "ForSell"] },
-    bhk: {
-        type: [String],
-        enum: ["1","2","3","4","4+"],
-  
-    },
+  bhk: {
+    type: [String],
+    enum: ["1", "2", "3", "4", "4+"],
+  },
   furnishing: {
     type: [String],
     enum: ["Fully Furnished", "Semi Furnished", "Unfurnished"],
@@ -31,7 +30,7 @@ const PropertySchema = new mongoose.Schema({
   updatedTime: { type: Date, default: Date.now },
   isDeleted: { type: Boolean, default: false },
   image: [{ type: String }],
-
+  categories: { type: String },
   productType: { type: mongoose.Schema.Types.ObjectId, ref: "ProductType" },
   subProductType: {
     type: mongoose.Schema.Types.ObjectId,

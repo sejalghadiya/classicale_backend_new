@@ -1,5 +1,5 @@
 // Fetch all unique locations (state, district, locationName)
-import { ProductModel } from "../model/product.js";
+
 export const getLocations = async (req, res) => {
   try {
     const locations = await ProductModel.aggregate([

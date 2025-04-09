@@ -37,11 +37,11 @@ router.post(
 );
 router.put(
   "/updateUser",
-  upload.fields([
-    { name: "profileImage", maxCount: 1 },
-    { name: "aadhaarCardImage1", maxCount: 1 },
-    { name: "aadhaarCardImage2", maxCount: 1 },
-  ]),
+  // upload.fields([
+  //   { name: "profileImage", maxCount: 1 },
+  //   { name: "aadhaarCardImage1", maxCount: 1 },
+  //   { name: "aadhaarCardImage2", maxCount: 1 },
+  // ]),
   updateUser
 );
 

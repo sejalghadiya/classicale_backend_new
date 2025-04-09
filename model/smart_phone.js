@@ -12,7 +12,7 @@ const SmartPhoneSchema = new mongoose.Schema({
   updatedTime: { type: Date, default: Date.now },
   isDeleted: { type: Boolean, default: false },
   images: { type: [String] },
-
+  categories: { type: String },
   productType: { type: mongoose.Schema.Types.ObjectId, ref: "ProductType" },
   subProductType: {
     type: mongoose.Schema.Types.ObjectId,

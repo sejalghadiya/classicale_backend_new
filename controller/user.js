@@ -1,5 +1,5 @@
 import { UserModel } from "../model/user.js";
-import { ProductModel } from "../model/product.js";
+
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { CodeModel } from "../model/pin.js";
@@ -9,37 +9,6 @@ import { read } from "fs";
 import { SubProductTypeModel } from "../model/sub_product_type.js";
 import { ProductTypeModel } from "../model/product_type.js";
 import { saveBase64Image } from "../utils/image_store.js";
-
-// Import Twilio using ES module syntax
-//import twilio from 'twilio';
-
-//const twilio = require("twilio");
-
-//import { Client } from "client";
-//import { sendOTPEmail } from "../controller/sendOtp.js"; // Import your sendOTPEmail function
-//const { sendOTPEmail } = require("../sendOtp.js");
-
-//const jwtKey =
-//process.env.ACCESS_TOKEN_SECRET || "classicalProjects";
-
-//const token = jwt.sign(payload, SECRET_KEY, { expiresIn: '1h' });
-
-const ERROR_MESSAGES = {
-  MISSING_FIRST_NAME: "First name is required",
-  MISSING_MIDDLE_NAME: "Middle name is required",
-  MISSING_LAST_NAME: "Last name is required",
-  MISSING_GENDER: "Gender is required",
-  MISSING_DATE_OF_BIRTH: "Date of Birth is required",
-  INVALID_DATE_OF_BIRTH: "Invalid Date of Birth format",
-  MISSING_PASSWORD: "Password is required",
-  MISSING_LOCATION: "Location is required",
-  MISSING_OCCUPATION: "Occupation is required",
-  MISSING_EMAIL: "Email is required",
-  USER_ALREADY_EXISTS: "User already exists",
-  SOMETHING_WENT_WRONG: "Something went wrong",
-  MISSING_PHONE: "Please enter your phone number",
-  SELECTED_VALUES: "Please select a value",
-};
 
 const generateOtp = (firstName, lastName) => {
   const firstNamePrefix = firstName.slice(0, 2).toUpperCase();
@@ -89,7 +58,6 @@ export const userSignUp = async (req, res) => {
         .status(400)
         .json({ message: "Please enter a valid email address!" });
     }
-
 
     // ✅ Step 2: Check if user already exists
     const existingUser = await UserModel.findOne({ email, userCategory });
@@ -295,6 +263,59 @@ export const userLogin = async (req, res) => {
     });
   }
 };
+export const updateUser = async (req, res) => {
+  try {
+    const userId = req.body.userId;
+    const user = await UserModel.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const updatedFields = req.body;
+
+    // Loop through fields
+    for (const key in updatedFields) {
+      if (Array.isArray(user[key]) && typeof updatedFields[key] === "string") {
+        user[key] = [user[key][1] || user[key][0] || "", updatedFields[key]];
+      } else if (
+        Array.isArray(user[key]) &&
+        Array.isArray(updatedFields[key])
+      ) {
+        user[key] = [user[key][1] || user[key][0] || "", updatedFields[key][0]];
+      } else if (updatedFields[key]) {
+        user[key] = updatedFields[key];
+      }
+    }
+
+    // ✅ Save base64 profile image to public and set URL
+    if (
+      updatedFields.profileImage &&
+      updatedFields.profileImage.startsWith("data:image")
+    ) {
+      const imagePath = saveBase64Image(
+        updatedFields.profileImage,
+        "profileImages",
+        "profile"
+      );
+
+      const fullUrl = `${req.protocol}://${req.get("host")}${imagePath}`;
+      user.profileImage = [
+        user.profileImage?.[1] || user.profileImage?.[0] || "",
+        fullUrl,
+      ];
+    }
+
+    await user.save();
+
+    return res.status(200).json({
+      message: "User updated successfully",
+      user,
+    });
+  } catch (error) {
+    console.error("Update Error:", error);
+    return res
+      .status(500)
+      .json({ message: "Server Error", error: error.message });
+  }
+};
 
 export const resetPassword = async (req, res) => {
   try {
@@ -459,7 +480,7 @@ export const updateUser1 = async (req, res) => {
   }
 };
 
-export const updateUser = async (req, res) => {
+export const updateUser2 = async (req, res) => {
   try {
     let { userId, ...updateData } = req.body;
 

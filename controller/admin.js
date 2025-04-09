@@ -1,7 +1,7 @@
 import Admin from "../model/admin.js"; // Import the Admin model
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { ProductModel } from "../model/product.js";
+
 import { UserModel } from "../model/user.js";
 import mongoose from "mongoose";
 import { ConversationModel } from "../model/conversation.js";
@@ -665,26 +665,33 @@ export const assignCodeToUser = async (req, res) => {
   try {
     const { userId, codeId } = req.body;
 
-    if (!userId ||!codeId) {
+    if (!userId || !codeId) {
       return res
-       .status(400)
-       .json({ success: false, message: "User ID and Code ID are required" });
+        .status(400)
+        .json({ success: false, message: "User ID and Code ID are required" });
     }
 
     const user = await UserModel.findById(userId);
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     const code = await CodeModel.findById(codeId);
     if (!code) {
-      return res.status(404).json({ success: false, message: "Code not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Code not found" });
     }
 
     if (user.codes.includes(codeId)) {
       return res
-       .status(400)
-       .json({ success: false, message: "Code is already assigned to this user" });
+        .status(400)
+        .json({
+          success: false,
+          message: "Code is already assigned to this user",
+        });
     }
   } catch (error) {
     console.error("Error assigning codes to user:", error);

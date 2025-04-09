@@ -3,6 +3,18 @@ import mongoose from "mongoose";
 
 const UserSchema = new mongoose.Schema(
   {
+    favorite: [
+      {
+        productId: {
+          type: mongoose.Schema.Types.ObjectId,
+          refPath: "favorite.modelName", // Dynamic reference based on modelName
+        },
+        modelName: {
+          type: String,
+        },
+      },
+    ],
+
     uuid: { type: String, default: null },
     token: { type: String, default: null },
     read: { type: [String] },

@@ -1,4 +1,3 @@
-import { ProductModel } from "../model/product.js";
 import { UserModel } from "../model/user.js";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
@@ -8,13 +7,10 @@ import { ProductTypeModel } from "../model/product_type.js";
 import { BikeModel } from "../model/bike.js";
 import { CarModel } from "../model/car.js";
 import { BookSportHobbyModel } from "../model/book_sport_hobby.js";
-import { ElectronicRepairingModel } from "../model/electronic_repairing.js";
 import { ElectronicModel } from "../model/electronic.js";
 import { FurnitureModel } from "../model/furniture.js";
 import { JobModel } from "../model/job.js";
 import { PetModel } from "../model/pet.js";
-import { HouseModel } from "../model/property_house.js";
-import { LandModel } from "../model/property_land.js";
 import { ServicesModel } from "../model/services.js";
 import { SmartPhoneModel } from "../model/smart_phone.js";
 import { OtherModel } from "../model/other.js";
@@ -22,150 +18,6 @@ import { PropertyModel } from "../model/property.js";
 import { saveBase64Image } from "../utils/image_store.js";
 dotenv.config();
 
-export const addProduct2 = async (req, res) => {
-  try {
-    const user = await UserModel.findOne({ userId: req.user.userId });
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
-    }
-
-    const { title, category } = req.body;
-
-    // ✅ Check if the product is already in the process of being added
-    const existingProduct = await ProductModel.findOne({
-      title: title.trim(),
-      categories: { $in: [category] },
-      addProductUserId: user._id,
-    });
-
-    if (existingProduct) {
-      return res.status(400).json({
-        message: "This product has already been added.",
-      });
-    }
-
-    // ✅ Save Product in Database
-    const productData = {
-      title,
-      brand: req.body.brand,
-      year: req.body.year,
-      description: req.body.description,
-      model: req.body.model,
-      categories: req.body.categories,
-      price: req.body.price,
-      productType: req.body.productType,
-      subProductType: req.body.subProductType || req.body.adTitle,
-      images:
-        req.files?.images?.map((img) => `/public/images/${img.filename}`) || [],
-      pdfResume: req.files?.pdfResume
-        ? `/public/pdfs/${req.files.pdfResume[0].filename}`
-        : "",
-      userId: req.user.userId,
-      addProductUserId: user._id,
-      createdTime: Date.now(),
-      updatedTime: Date.now(),
-      location: {
-        state: user.state || "Unknown",
-        district: user.district || "Unknown",
-        locationName: user.locationName || "Unknown",
-      },
-    };
-
-    const newProduct = new ProductModel(productData);
-    await newProduct.save();
-
-    // ✅ Update user's product count
-    user.productCount = (user.productCount || 0) + 1;
-    await user.save();
-
-    res.status(201).json({
-      message: "Product added successfully!",
-      productId: newProduct._id,
-      product: newProduct,
-    });
-  } catch (error) {
-    console.error("Error adding product:", error);
-    res.status(500).json({ message: "Internal server error." });
-  }
-};
-
-export const addProduct22 = async (req, res) => {
-  try {
-    const user = await UserModel.findOne({ userId: req.user?.userId });
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
-    }
-
-    const productData = { ...req.body };
-
-    if (!productData.title || !productData.categories) {
-      return res
-        .status(400)
-        .json({ message: "Title and Category are required." });
-    }
-
-    const existingProduct = await ProductModel.findOne({
-      title: productData.title?.trim(),
-      categories: { $in: [productData.categories] },
-      addProductUserId: user._id,
-    });
-
-    if (existingProduct) {
-      return res
-        .status(400)
-        .json({ message: "This product has already been added." });
-    }
-
-    if (req.files?.images) {
-      if (!Array.isArray(req.files.images)) {
-        req.files.images = [req.files.images];
-      }
-      productData.images = req.files.images.map(
-        (img) => `/public/images/${img.filename}`
-      );
-    } else {
-      productData.images = [];
-    }
-
-    // 📄 Handle PDF Upload
-    if (req.files?.pdfResume && req.files.pdfResume.length > 0) {
-      const pdfFilePath = `/public/pdfs/${req.files.pdfResume[0].filename}`;
-      productData.pdfResume = pdfFilePath;
-      console.log("Uploaded PDF Path:", pdfFilePath); // ✅ Debugging
-    } else {
-      productData.pdfResume = ""; // 🛠 Set empty if no PDF uploaded
-    }
-
-    console.log("PDF Path:", req.files.pdfResume?.[0]?.path);
-
-    productData.userId = req.user.userId;
-    productData.addProductUserId = user._id;
-    productData.createdTime = Date.now();
-    productData.updatedTime = Date.now();
-    productData.location = {
-      state: user.state || "Unknown",
-      district: user.district || "Unknown",
-      locationName: user.locationName || "Unknown",
-    };
-
-    const newProduct = new ProductModel(productData);
-    await newProduct.save();
-
-    user.productCount = (user.productCount || 0) + 1;
-    await user.save();
-
-    res.status(201).json({
-      message: "Product added successfully!",
-      productId: newProduct._id,
-      product: newProduct,
-      pdfLink: `${req.protocol}://${req.get("host")}${productData.pdfResume}`, // 📄 PDF का Link
-    });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error.", error: error.message });
-  }
-};
 export const addProduct_remove = async (req, res) => {
   try {
     // 🔍 Find the user
@@ -229,30 +81,6 @@ export const addProduct_remove = async (req, res) => {
   }
 };
 
-export const searchProduct1 = async (req, res) => {
-  try {
-    const { query } = req.body;
-
-    if (!query) {
-      return res.status(400).json({ message: "Query is required" });
-    }
-    const searchRegex = new RegExp(query, "i");
-    const products = await ProductModel.find({
-      $or: [
-        { title: searchRegex },
-        { productType: searchRegex },
-        { subProductType: searchRegex },
-      ],
-    }).select("productType subProductType");
-
-    console.log("Found products:", products);
-    res.status(200).json(products);
-  } catch (error) {
-    console.error("Error in search API:", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-};
-
 export const searchProduct = async (req, res) => {
   try {
     const { query } = req.body;
@@ -278,67 +106,6 @@ export const searchProduct = async (req, res) => {
   } catch (error) {
     console.error("Error in search API:", error);
     res.status(500).json({ message: "Internal Server Error" });
-  }
-};
-
-export const showProduct1 = async (req, res) => {
-  try {
-    // Query parameters ko decode karein
-    const state = decodeURIComponent(req.query.state || "").trim();
-    const district = decodeURIComponent(req.query.district || "").trim();
-    const locationName = decodeURIComponent(
-      req.query.locationName || ""
-    ).trim();
-    const searchQuery = decodeURIComponent(req.query.search || "").trim(); // ✅ Search Query Add Kiya
-
-    // Special characters ko escape karein
-    const escapeRegex = (str) => {
-      return str.replace(/[.*+?^=!:${}()|\[\]\/\\]/g, "\\$&");
-    };
-
-    // Default query: isDeleted false hone chahiye
-    const query = { isDeleted: false };
-
-    // Location-based filters
-    if (state) {
-      query["location.state"] = { $regex: new RegExp(escapeRegex(state), "i") };
-    }
-    if (district) {
-      query["location.district"] = {
-        $regex: new RegExp(escapeRegex(district), "i"),
-      };
-    }
-    if (locationName) {
-      query["location.locationName"] = {
-        $regex: new RegExp(escapeRegex(locationName), "i"),
-      };
-    }
-
-    // ✅ **Search Query ko Filter mein Add karein**
-    if (searchQuery) {
-      query["$or"] = [
-        { productType: { $regex: new RegExp(escapeRegex(searchQuery), "i") } }, // 🔍 Product Type Search
-        {
-          subProductType: { $regex: new RegExp(escapeRegex(searchQuery), "i") },
-        }, // 🔍 Sub Product Type Search
-      ];
-    }
-
-    console.log("Constructed Query:", query); // Debugging ke liye query log karein
-
-    // Database se products fetch karein
-    const products = await ProductModel.find(query);
-
-    if (!products.length) {
-      return res.status(404).json({
-        message: `No products found for search: ${searchQuery}, district: ${district}, state: ${state}`,
-      });
-    }
-
-    res.status(200).json(products);
-  } catch (err) {
-    console.error("Error in showProduct:", err);
-    res.status(500).send("Internal Server Error");
   }
 };
 
@@ -508,7 +275,7 @@ export const updateProduct = async (req, res) => {
   }
 };
 
-export const addFavoriteProduct = async (req, res) => {
+export const addFavoriteProduct1 = async (req, res) => {
   try {
     const { productId } = req.body;
 
@@ -585,7 +352,7 @@ export const showUserAddProduct = async (req, res) => {
   }
 };
 
-export const getFavoriteProducts = async (req, res) => {
+export const getFavoriteProductsw1 = async (req, res) => {
   try {
     // Fetch user details using the userId from the request
     const user = await UserModel.findOne({ userId: req.user.userId });
@@ -720,13 +487,10 @@ const productModels = {
   Bike: BikeModel,
   Car: CarModel,
   book_sport_hobby: BookSportHobbyModel,
-  electronic_repairing: ElectronicRepairingModel,
   electronic: ElectronicModel,
   furniture: FurnitureModel,
   job: JobModel,
   pet: PetModel,
-  house: HouseModel,
-  land: LandModel,
   smart_phone: SmartPhoneModel,
   services: ServicesModel,
   other: OtherModel,
@@ -828,12 +592,121 @@ export const addProduct = async (req, res) => {
     res.status(500).json({ message: "Server error!", error: error.message });
   }
 };
+export const addFavoriteProduct = async (req, res) => {
+  try {
+    const { userId, productId } = req.body;
+
+    if (!userId || !productId) {
+      return res.status(400).json({
+        message: "User ID and Product ID are required.",
+      });
+    }
+
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // Check if product already exists in favorites
+    const existingIndex = user.favorite.findIndex(
+      (fav) => fav.productId.toString() === productId.toString()
+    );
+
+    if (existingIndex !== -1) {
+      // ✅ Product already in favorites —> remove it
+      user.favorite.splice(existingIndex, 1);
+      await user.save();
+      return res.status(200).json({
+        message: "Product removed from favorites.",
+        favorite: user.favorite,
+      });
+    }
+
+    // 🔍 Find the model name dynamically
+    let foundModelName = null;
+    for (const [modelName, Model] of Object.entries(productModels)) {
+      const product = await Model.findById(productId);
+      if (product) {
+        foundModelName = modelName;
+        break;
+      }
+    }
+
+    if (!foundModelName) {
+      return res
+        .status(404)
+        .json({ message: "Product not found in any model." });
+    }
+
+    // ➕ Add to favorites
+    user.favorite.push({ productId, modelName: foundModelName });
+    await user.save();
+
+    return res.status(200).json({
+      message: "Product added to favorites.",
+      favorite: user.favorite,
+    });
+  } catch (err) {
+    console.error("❌ Error in addFavoriteProduct:", err.message);
+    return res.status(500).json({
+      message: "Server error.",
+      error: err.message,
+    });
+  }
+};
+
+export const getFavoriteProducts = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required." });
+    }
+
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const favoriteProducts = [];
+
+    for (const favoriteItem of user.favorite) {
+      const { productId, modelName } = favoriteItem;
+
+      const ProductModel = productModels[modelName];
+      if (ProductModel) {
+        const product = await ProductModel.findById(productId);
+        if (product) {
+          favoriteProducts.push({
+            ...product._doc,
+            modelName, // For frontend reference
+          });
+        }
+      }
+    }
+
+    return res.status(200).json({
+      message: "Favorite products fetched successfully.",
+      products: favoriteProducts,
+    });
+  } catch (err) {
+    console.error("❌ Error in getFavoriteProducts:", err.message);
+    return res.status(500).json({
+      message: "Server error.",
+      error: err.message,
+    });
+  }
+};
 
 // add other product
 export const addOtherProduct = async (req, res) => {
   try {
     let { data } = req.body;
-
+    console.log(data.price);
+    console.log(data.title);
+    console.log(data.description);
+    console.log(data.productType);
+    console.log(data.subProductTypeName);
     if (!data?.productType) {
       console.log("❌ Missing product type");
       return res.status(400).json({ message: "Product Type is required" });
@@ -851,6 +724,8 @@ export const addOtherProduct = async (req, res) => {
       const existingSub = await SubProductTypeModel.findOne({
         name: data.subProductTypeName,
       });
+
+      console.log(existingSub);
 
       if (existingSub) {
         return res
@@ -887,6 +762,9 @@ export const addOtherProduct = async (req, res) => {
 
     // 🖼️ Handle product images
     let productImages = data.productImages;
+    console.log("---------------------------->");
+    console.log(productImages.length);
+    console.log("---------------------------->");
     let imagePaths = [];
 
     if (typeof productImages === "string") {
@@ -900,17 +778,18 @@ export const addOtherProduct = async (req, res) => {
 
     if (Array.isArray(productImages)) {
       for (const base64Image of productImages) {
-        const imagePath = saveBase64Image(
+        const imagePath = await saveBase64Image(
           base64Image,
           "productImages",
           "product"
         );
+        console.log(imagePath);
         imagePaths.push(imagePath);
       }
     }
 
     data.images = imagePaths;
-
+    console.log(data.images);
     // ✅ Save the product
     const product = new OtherModel(data);
     await product.save();

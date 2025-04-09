@@ -37,14 +37,11 @@ router.get("/showProduct", showProduct);
 router.delete("/deleteProduct", authenticateUser, softDeleteProduct);
 router.get("/getProduct", showUserAddProduct);
 router.put("/update", authenticateUser, updateProduct);
-router.post("/favorites", authenticateUser, addFavoriteProduct);
-router.get("/getFavoriteProduct", authenticateUser, getFavoriteProducts);
+router.post("/favorites", addFavoriteProduct);
+router.get("/getFavoriteProduct/:userId", getFavoriteProducts);
 router.post("/add-other-product", addOtherProduct);
 
-router.post(
-  "/add",
-  addProduct
-);
+router.post("/add", addProduct);
 
 router.get("/get-product", getAllProducts);
 router.get("/get-product-by-id", getProductById);

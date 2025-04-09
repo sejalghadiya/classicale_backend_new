@@ -13,9 +13,12 @@ const CarSchema = new mongoose.Schema({
   price: { type: [String] },
   description: { type: [String] },
   images: [{ type: String }],
-
+  categories: { type: String },
   productType: { type: mongoose.Schema.Types.ObjectId, ref: "ProductType" },
-  subProductType: {type: mongoose.Schema.Types.ObjectId,ref: "SubProductType",},
+  subProductType: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "SubProductType",
+  },
 });
 
 export const CarModel = mongoose.model("Car", CarSchema);
