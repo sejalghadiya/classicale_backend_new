@@ -658,7 +658,8 @@ export const addFavoriteProduct = async (req, res) => {
 export const getFavoriteProducts = async (req, res) => {
   try {
     const { userId } = req.params;
-
+    console.log(userId);
+    
     if (!userId) {
       return res.status(400).json({ message: "User ID is required." });
     }
@@ -684,6 +685,8 @@ export const getFavoriteProducts = async (req, res) => {
         }
       }
     }
+    console.log("Favorites from DB:", user.favorite);
+
 
     return res.status(200).json({
       message: "Favorite products fetched successfully.",

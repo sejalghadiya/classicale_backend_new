@@ -23,7 +23,6 @@ const PropertySchema = new mongoose.Schema({
   length: { type: [String] },
   breadth: { type: [String] },
   facing: { type: [String] },
-  projectName: { type: [String] },
   adTitle: { type: [String] },
   description: { type: [String] },
   createdTime: { type: Date, default: Date.now },
