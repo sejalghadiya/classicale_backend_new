@@ -293,14 +293,15 @@ export const updateUser = async (req, res) => {
 
     // ✅ Save base64 profile image to public and set URL
     if (
-      updatedFields.profileImage &&
-      updatedFields.profileImage.startsWith("data:image")
+      updatedFields.profileImageBase64 &&
+      updatedFields.profileImageBase64.startsWith("data:image")
     ) {
       const imagePath = saveBase64Image(
-        updatedFields.profileImage,
+        updatedFields.profileImageBase64,
         "profileImages",
         "profile"
       );
+      console.log("Image Path:", imagePath);
       user.profileImage = [
         user.profileImage?.[1] || user.profileImage?.[0] || "",
         imagePath,
@@ -322,7 +323,6 @@ export const updateUser = async (req, res) => {
     //     imagePath,
     //   ];
     // }
-    
 
     await user.save();
 
@@ -346,9 +346,9 @@ export const getUserByID = async (req, res) => {
       return res.status(400).json({ message: "userId is required" });
     }
 
-    const user = await UserModel.findById(userId).select(
-      "-password -otp -otpExpire"
-    ); // Exclude sensitive fields
+    const user = await UserModel.findById(userId)
+      .select("-password -otp -otpExpire") // Exclude sensitive fields
+      .populate("occupationId"); // Populate the occupationId field
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });

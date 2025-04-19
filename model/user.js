@@ -28,7 +28,7 @@ const UserSchema = new mongoose.Schema(
     password: { type: String },
     gender: { type: [String] },
     DOB: { type: [String] },
-    occupationId: { type: mongoose.Schema.Types.ObjectId, ref: "Occupation" },
+    occupationId: { type: mongoose.Schema.Types.ObjectId, ref: "occupation" },
     // occupationId: { type: String },
     state: { type: [String] },
     district: { type: [String] },
