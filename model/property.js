@@ -42,6 +42,10 @@ const PropertySchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "SubProductType",
   },
+  history: {
+    type: [mongoose.Schema.Types.Mixed],
+    default: []
+  }
 });
 
 export const PropertyModel = mongoose.model("property", PropertySchema);

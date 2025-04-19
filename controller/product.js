@@ -613,9 +613,6 @@ export const updateProduct = async (req, res) => {
     const product = await Model.findById(productId);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
-    // ✅ Save OLD version before making changes
-    const oldVersion = product.toObject();
-
     // ✅ Parse and Save New Images (if sent)
     let productImages = req.body.productImages;
     let imagePaths = [];
@@ -642,14 +639,22 @@ export const updateProduct = async (req, res) => {
       data.images = imagePaths;
     }
 
-    // ✅ Update product fields
-    Object.assign(product, data);
+    // ✅ Update fields with history tracking (similar to updateUser)
+    for (const key in data) {
+      if (Array.isArray(product[key]) && typeof data[key] === "string") {
+        // If the field is an array and the new value is a string
+        product[key] = [product[key][1] || product[key][0] || "", data[key]];
+      } else if (Array.isArray(product[key]) && Array.isArray(data[key])) {
+        // If both the field and new value are arrays
+        product[key] = [product[key][1] || product[key][0] || "", data[key][0]];
+      } else if (data[key]) {
+        // For non-array fields or when the new value is not an array
+        product[key] = data[key];
+      }
+    }
 
-    // ✅ Save NEW version after applying updates
-    const newVersion = product.toObject();
-
-    // ✅ Store only two versions: [old, new]
-    product.history = [oldVersion, newVersion];
+    // Log the updated product for debugging
+    console.log("Product updated with history tracking");
 
     await product.save();
 
@@ -662,87 +667,6 @@ export const updateProduct = async (req, res) => {
     res.status(500).json({ message: "Server error!", error: error.message });
   }
 };
-
-// export const updateProduct = async (req, res) => {
-//   try {
-//     const { userId, productId, productType, subProductType, ...data } =
-//       req.body;
-
-//     if (!productId)
-//       return res.status(400).json({ message: "Product ID is required" });
-
-//     if (!productType)
-//       return res.status(400).json({ message: "Product Type is required" });
-
-//     const _productType = await ProductTypeModel.findById(productType);
-//     if (!_productType)
-//       return res.status(404).json({ message: "Product Type not found" });
-
-//     if (!subProductType)
-//       return res.status(400).json({ message: "Sub-Product Type is required" });
-
-//     const _subProductType = await SubProductTypeModel.findOne({
-//       _id: subProductType,
-//       productType,
-//     });
-//     if (!_subProductType)
-//       return res.status(404).json({
-//         message:
-//           "SubProduct Type not found or does not belong to this Product Type",
-//       });
-
-//     const Model = productModels[_productType.modelName];
-//     if (!Model) return res.status(400).json({ message: "Invalid Model Name" });
-
-//     const product = await Model.findById(productId);
-//     if (!product) return res.status(404).json({ message: "Product not found" });
-
-//     // ✅ Parse and Save New Images (if sent)
-//     let productImages = req.body.productImages;
-//     let imagePaths = [];
-
-//     if (typeof productImages === "string") {
-//       try {
-//         productImages = JSON.parse(productImages);
-//       } catch (err) {
-//         console.error("❌ Failed to parse productImages:", err);
-//         productImages = [];
-//       }
-//     }
-
-//     if (Array.isArray(productImages) && productImages.length > 0) {
-//       for (const base64Image of productImages) {
-//         const imagePath = saveBase64Image(
-//           base64Image,
-//           "productImages",
-//           "product"
-//         );
-//         imagePaths.push(imagePath);
-//       }
-
-//       data.images = imagePaths;
-//     }
-
-//     const oldVersion = product.toObject();
-
-//     if (!Array.isArray(product.history)) {
-//       product.history = [];
-//     }
-
-//     product.history = [oldVersion, product.toObject()];
-
-//     Object.assign(product, data);
-//     await product.save();
-
-//     return res.status(200).json({
-//       message: `${_productType.name} updated successfully`,
-//       product,
-//     });
-//   } catch (error) {
-//     console.error("❌ Server Error:", error.message);
-//     res.status(500).json({ message: "Server error!", error: error.message });
-//   }
-// };
 
 export const deleteProduct = async (req, res) => {
   try {
@@ -1201,58 +1125,6 @@ export const getProductByCategory = async (req, res) => {
     res.status(500).json({ message: "Server error!", error: error.message });
   }
 };
-
-// export const addProduct = async (req, res) => {
-//   try {
-//     console.log("📌 Request Body:", req.body);
-
-//     const { productType, subProductType, data } = req.body;
-
-//     // ✅ Check if productType is provided
-//     if (!productType) {
-//       return res.status(400).json({ message: "Product Type is required" });
-//     }
-//     if (!subProductType) {
-//       return res.status(400).json({ message: "Sub-Product Type is required" });
-//     }
-
-//     const _productType = await ProductTypeModel.findById(productType);
-//     if (!_productType) {
-//       return res.status(404).json({ message: "Product Type not found" });
-//     }
-
-//     // ✅ Check if subProductType exists under the correct productType
-//     const _subProductType = await SubProductTypeModel.findOne({
-//       _id: subProductType,
-//       productType: productType,
-//     });
-
-//     if (!_subProductType) {
-//       return res.status(404).json({
-//         message:
-//           "SubProduct Type not found or does not belong to this Product Type",
-//       });
-//     }
-
-//     const Model = productModels[_productType.modelName];
-//     if (!Model) {
-//       return res.status(400).json({ message: "Invalid Model Name" });
-//     }
-
-//     // ✅ Save the product dynamically
-//     const product = new Model(data);
-//     await product.save();
-
-//     return res.status(200).json({
-//       message: `${_productType.name} added successfully`,
-//       product,
-//     });
-//   } catch (error) {
-//     console.log("❌ Server Error:", error.message);
-//     res.status(500).json({ message: "Server error!", error: error.message });
-//   }
-// };
-//add product by user
 
 // GET /api/products/by-user/:userId
 export const getProductsByUser1 = async (req, res) => {
