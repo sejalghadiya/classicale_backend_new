@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 const SmartPhoneSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
   brand: { type: [String] },
   model: { type: [String] },
   price: { type: [String] },
@@ -13,6 +14,11 @@ const SmartPhoneSchema = new mongoose.Schema({
   isDeleted: { type: Boolean, default: false },
   images: { type: [String] },
   categories: { type: String },
+  address1: { type: [String] },
+  isDeleted: {
+    type: Boolean,
+    default: false,
+  },
   productType: { type: mongoose.Schema.Types.ObjectId, ref: "ProductType" },
   subProductType: {
     type: mongoose.Schema.Types.ObjectId,

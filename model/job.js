@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 const JobSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
   service_job: {
     type: String,
     enum: ["Service", "Job"],
@@ -13,6 +14,11 @@ const JobSchema = new mongoose.Schema({
   description: { type: [String] },
   images: [{ type: String }],
   categories: { type: String },
+  address1: { type: [String] },
+  isDeleted: {
+    type: Boolean,
+    default: false,
+  },
   productType: { type: mongoose.Schema.Types.ObjectId, ref: "ProductType" },
   subProductType: {
     type: mongoose.Schema.Types.ObjectId,

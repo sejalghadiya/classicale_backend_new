@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 const PropertySchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
   type: { type: String, enum: ["ForRent", "ForSell"] },
   bhk: {
     type: [String],
@@ -19,6 +20,7 @@ const PropertySchema = new mongoose.Schema({
     type: [String],
     enum: ["Owner", "Builder", "Dealer"],
   },
+  price: { type: [String] },
   area: { type: [String] },
   length: { type: [String] },
   breadth: { type: [String] },
@@ -28,7 +30,12 @@ const PropertySchema = new mongoose.Schema({
   createdTime: { type: Date, default: Date.now },
   updatedTime: { type: Date, default: Date.now },
   isDeleted: { type: Boolean, default: false },
-  image: [{ type: String }],
+  images: [{ type: String }],
+  address1: { type: [String] },
+  isDeleted: {
+    type: Boolean,
+    default: false,
+  },
   categories: { type: String },
   productType: { type: mongoose.Schema.Types.ObjectId, ref: "ProductType" },
   subProductType: {

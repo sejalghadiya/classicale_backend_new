@@ -13,6 +13,9 @@ import {
   getAllProducts,
   getProductById,
   addOtherProduct,
+  getProductByCategory,
+  getProductsByUser,
+  deleteProduct,
 } from "../controller/product.js";
 import { authenticateUser } from "../auth/middle.js";
 // In routes or other files
@@ -34,9 +37,9 @@ const router = express.Router();
 
 router.get("/get", searchProduct);
 router.get("/showProduct", showProduct);
-router.delete("/deleteProduct", authenticateUser, softDeleteProduct);
+//router.delete("/deleteProduct", authenticateUser, softDeleteProduct);
 router.get("/getProduct", showUserAddProduct);
-router.put("/update", authenticateUser, updateProduct);
+router.put("/update", updateProduct);
 router.post("/favorites", addFavoriteProduct);
 router.get("/getFavoriteProduct/:userId", getFavoriteProducts);
 router.post("/add-other-product", addOtherProduct);
@@ -45,4 +48,8 @@ router.post("/add", addProduct);
 
 router.get("/get-product", getAllProducts);
 router.get("/get-product-by-id", getProductById);
+router.get("/get-product-by-category", getProductByCategory);
+router.get("/get-product-by-userId", getProductsByUser);
+
+router.delete("/softDelete", deleteProduct);
 export default router;

@@ -181,6 +181,12 @@ export const userSignUp = async (req, res) => {
       .json({ message: "User registered successfully", user: newUser });
   } catch (error) {
     console.log("Error:", error);
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        message: "Invalid User Category",
+        error: error.message, // optional: send all error messages
+      });
+    }
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -295,13 +301,28 @@ export const updateUser = async (req, res) => {
         "profileImages",
         "profile"
       );
-
-      const fullUrl = `${req.protocol}://${req.get("host")}${imagePath}`;
       user.profileImage = [
         user.profileImage?.[1] || user.profileImage?.[0] || "",
-        fullUrl,
+        imagePath,
       ];
     }
+
+    // ✅ Save base64 adhar front to public and set URL
+    // if (
+    //   updatedFields.profileImage &&
+    //   updatedFields.profileImage.startsWith("data:image")
+    // ) {
+    //   const imagePath = saveBase64Image(
+    //     updatedFields.profileImage,
+    //     "profileImages",
+    //     "profile"
+    //   );
+    //   user.profileImage = [
+    //     user.profileImage?.[1] || user.profileImage?.[0] || "",
+    //     imagePath,
+    //   ];
+    // }
+    
 
     await user.save();
 
@@ -311,6 +332,31 @@ export const updateUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Update Error:", error);
+    return res
+      .status(500)
+      .json({ message: "Server Error", error: error.message });
+  }
+};
+
+export const getUserByID = async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ message: "userId is required" });
+    }
+
+    const user = await UserModel.findById(userId).select(
+      "-password -otp -otpExpire"
+    ); // Exclude sensitive fields
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json({ success: true, user });
+  } catch (error) {
+    console.error("Error in getUserByID:", error);
     return res
       .status(500)
       .json({ message: "Server Error", error: error.message });

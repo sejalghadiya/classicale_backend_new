@@ -13,6 +13,7 @@ import {
   resetPassword,
   getProductTypes,
   getProductSubType,
+  getUserByID,
 } from "../controller/user.js";
 import { upload } from "../upload.js";
 import authenticateUser from "../auth/middle.js";
@@ -44,7 +45,7 @@ router.put(
   // ]),
   updateUser
 );
-
+router.get("/getUserByID",getUserByID);
 router.delete("/deleteUser/:userId", authenticateUser, deleteUser);
 
 router.post("/checkBoth", checkBothUser);
