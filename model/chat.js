@@ -1,85 +1,25 @@
 import mongoose from "mongoose";
-
-const CommunicateSchema = new mongoose.Schema({
-  conversationId: {
-    type: mongoose.Types.ObjectId,
-    ref: "conversation",
-  },
-
-  senderName: {
-    type: String,
-  },
-  receiverName: {
-    type: String,
-  },
-  senderId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User", // Reference to the User model
-    required: true,
-  },
-  productId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Product", // Reference to the Product model
-  },
-  messages: [
-    {
-      id: {
-        type: mongoose.Types.ObjectId,
-      },
-      senderName: {
-        type: String,
-      },
-      senderId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-        required: true,
-      },
-      deletedBy: { type: [mongoose.Schema.Types.ObjectId], default: [] },
-      receiverId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-      text: {
-        type: String,
-      },
-      image: {
-        type: String,
-      },
-      status: {
-        type: String,
-        enum: ["pending", "seen"], // Allowed values
-        default: "pending", // Default status
-      },
-      isDeleted: { type: Boolean, default: false },
-      isRead: { type: Boolean, default: false },
-
-      createdTime: {
-        type: Date,
-        default: Date.now,
-      },
-    },
-  ],
-
-  createdTime: {
-    type: Date,
-    default: Date.now,
-  },
+const metaDataSchema = new mongoose.Schema({
+  fileName: { type: String, default: null },
+  fileSize: { type: String, default: null },
+  mimeType: { type: String, default: null },
 });
 
-export const CommunicateModel = mongoose.model(
-  "Communicate",
-  CommunicateSchema
+const CommunicateSchema = new mongoose.Schema(
+  {
+    chatId: { type: mongoose.Schema.Types.ObjectId, ref: "conversation" },
+    senderId: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
+    productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
+    type: { type: String, enum: ["text", "image", "pdf"] },
+    content: { type: String },
+    metaData: {
+      type: metaDataSchema,
+    },
+    status: { type: String, enum: ["sent", "delivered", "read"] },
+  },
+  {
+    timestamps: true,
+  }
 );
 
-const userSchema = new mongoose.Schema({
-  username: {
-    type: String,
-    required: true,
-  },
-  email: {
-    type: String,
-    required: true,
-  },
-});
-
-export const UserModel = mongoose.model("User", userSchema);
+export const CommunicateModel = mongoose.model("Chats", CommunicateSchema);

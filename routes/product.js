@@ -16,6 +16,8 @@ import {
   getProductByCategory,
   getProductsByUser,
   deleteProduct,
+  deleteProductImage,
+  toggleProductVisibility,
 } from "../controller/product.js";
 import { authenticateUser } from "../auth/middle.js";
 // In routes or other files
@@ -51,5 +53,7 @@ router.get("/get-product-by-id", getProductById);
 router.get("/get-product-by-category", getProductByCategory);
 router.get("/get-product-by-userId", getProductsByUser);
 
-router.delete("/softDelete", deleteProduct);
+router.delete("/softDelete/:productId/:productType", deleteProduct);
+router.delete("/delete-product-image", deleteProductImage);
+router.post("/product-active-inactive", toggleProductVisibility);
 export default router;

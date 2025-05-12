@@ -9,7 +9,6 @@ import { Server } from "socket.io";
 import UserRouter from "./routes/user.js";
 import ProductRouter from "./routes/product.js";
 import CommunicateRouter from "./routes/chat.js";
-import ConversationRouter from "./routes/conversation.js";
 import AdminRouter from "./routes/admin.js";
 import Admin from "./model/admin.js";
 import { LocationModel } from "./model/location.js";
@@ -20,19 +19,9 @@ import { upload } from "./auth/image.js";
 import LocationRouter from "./routes/location.js";
 import fs from "fs";
 import { UserModel } from "./model/user.js";
-import { setupSocket } from "./socket.js";
-import { Redis } from "ioredis";
+import { log } from "console";
 dotenv.config();
 
-// Create Socket.IO server
-// export const io = new Server(server, {
-//   cors: {
-//     origin: "*",
-//     methods: ["GET", "POST"],
-//   },
-// });
-
-dotenv.config();
 const app = express();
 app.use(express.json({ limit: "10mb" })); // or even higher like '50mb'
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
@@ -41,98 +30,21 @@ app.use(cors());
 const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
 // Create Socket.IO server
-export const io = new Server(server, {
+const io = new Server(server, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   },
 });
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 const __filename = new URL(import.meta.url).pathname;
 const __dirname = path.dirname(__filename);
 const uri = process.env.MONGODB_URL;
-mongoose
+await mongoose
   .connect(uri, {})
   .then(() => {
     console.log("Connected to MongoDB Atlas!");
   })
   .catch((error) => console.error("Error connecting to MongoDB:", error));
-
-console.log("++hgdsjdbsj++");
-// async function importPin() {
-//   try {
-//     const data = fs.readFileSync(filePath, "utf8");
-
-//     let records = JSON.parse(data);
-//     records = records.map((item) => ({
-//       tableId: item["Table 1"],
-//       column2: item.Column2,
-//       isAssigned: false,
-//       assignedUsers: [],
-//     }));
-
-//    // await TableData.deleteMany({});
-
-//     // ✅ MongoDB में Insert करें
-//     await TableData.insertMany(records);
-//     console.log("✅ Data inserted successfully!");
-//   } catch (error) {
-//     console.error("Error reading or inserting data:", error);
-//   }
-// }
-
-// importPin();
-// console.log("jsonFile");
-// export async function importJson() {
-//   try {
-//   const data = fs.readFileSync(fileName, "utf8");
-//   console.log("Raw JSON Data:", data);
-// } catch (error) {
-//   console.error("❌ File read error:", error);
-// }
-// }
-
-// importJson();
-//const fileName = "./condition/ai_future.json"; // JSON फ़ाइल का path
-
-// async function importJson() {
-//   try {
-//     const data = fs.readFileSync(fileName, "utf8");
-//     console.log("Raw JSON Data:", data);
-
-//     let records = JSON.parse(data);
-//     console.log("Parsed JSON:", records);
-
-//     if (!Array.isArray(records)) {
-//       records = [records];
-//     }
-
-//     // Default values set करो
-//     records = records.map((record) => ({
-//       title: record.title || "Untitled",
-//       author: record.author || "Unknown",
-//       date: record.date || new Date().toISOString(),
-//       content: record.content || "No content available.",
-//     }));
-
-//     // ✅ insertMany() से डुप्लिकेट को ignore करें
-//     await ConversationModel.insertMany(records, { ordered: false }) // ordered: false → बाक़ी के inserts नहीं रुकेंगे
-//       .then(() => console.log("✅ Data inserted successfully!"))
-//       .catch((error) => {
-//         if (error.code === 11000) {
-//           console.log("⚠️ Some duplicate records were ignored.");
-//         } else {
-//           throw error;
-//         }
-//       });
-
-//   } catch (error) {
-//     console.error("❌ Error reading or inserting data:", error);
-//   }
-// }
-// importJson();
 
 app.post("/api/pin", async (req, res) => {
   try {
@@ -254,35 +166,6 @@ app.post("/api/assign-pin", async (req, res) => {
   }
 });
 
-// const importLocationData = async () => {
-//   try {
-//     const existingLocations = await LocationModel.countDocuments();
-
-//     if (existingLocations > 0) {
-//       console.log("Data already exists in the database. Skipping insertion.");
-//       return;
-//     }
-//     const jsonData = JSON.parse(fs.readFileSync("./data/data.json", "utf8"));
-
-//     const formattedData = jsonData.slice(0, 20).map((item) => ({
-//       countryCode: item.Country_Code || "default-country-code",
-//       postalCode: item.Postal_Code || "000000",
-//       stateCode: item.State_Code || "default-state-code",
-//       state: item.State,
-//       district: item.District,
-//       locationName: item.Location_Name,
-//       subDistrictCode: item.Sub_district_Code || "default-subdistrict-code",
-//       subDistrictName: item.Sub_district_Name || "default-subdistrict-name",
-//     }));
-//     await LocationModel.insertMany(formattedData);
-//     console.log("Location data imported successfully!");
-//   } catch (error) {
-//     console.error("Error importing location data:", error.message);
-//   }
-// };
-
-//importLocationData();
-
 app.get("/api/locations", async (req, res) => {
   try {
     const data = await LocationModel.find(); // Fetch all location data from the database
@@ -295,26 +178,6 @@ app.get("/api/locations", async (req, res) => {
     res.status(500).json({ error: "Error fetching all locations." });
   }
 });
-
-// app.get("/api/states", async (req, res) => {
-//   try {
-//     const data = await LocationModel.find();
-//     console.log(data);
-//     if (!data || data.length === 0) {
-//       return res.status(500).json({ error: "Data could not be loaded." });
-//     }
-//     const states = [...new Set(data.map((item) => item.State))];
-//     res.json({
-//       success: true,
-//       message: "State List fetch successfully",
-//       states,
-//     });
-//   } catch (error) {
-//     console.error("Error:", error);
-//     res.status(500).json({ error: "An error occurred while fetching states." });
-//   }
-// });
-// const redis = new Redis(); // Defaults to localhost:6379
 
 let stateList = []; // Cached state list in memory
 
@@ -404,31 +267,6 @@ app.get("/api/locations/:district", async (req, res) => {
   }
 });
 
-// app.get("/api/location/:district", async (req, res) => {
-//   try {
-//     const district = req.params.district;
-//     const data = await LocationModel.find({ District: district }); // Fetch data for the selected district
-//     if (!data || data.length === 0) {
-//       return res.status(500).json({ error: "Data could not be loaded." });
-//     }
-
-//     // Fetch all location names for the selected district
-//     const locations = [...new Set(data.map((item) => item.Location_Name))];
-
-//     if (locations.length > 0) {
-//       res.json(locations);
-//     } else {
-//       res.status(404).json({
-//         message: `No locations found for district ${district}.`,
-//       });
-//     }
-//   } catch (error) {
-//     res
-//       .status(500)
-//       .json({ error: "An error occurred while fetching locations." });
-//   }
-// });
-
 createAdminIfNotExists();
 
 async function createAdminIfNotExists() {
@@ -458,17 +296,12 @@ async function createAdminIfNotExists() {
         { new: true }
       );
 
-      console.log("Admin user updated successfully!", updatedAdmin);
+      // console.log("Admin user updated successfully!", updatedAdmin);
     }
   } catch (error) {
     console.error("Error creating or updating admin user:", error);
   }
 }
-
-console.log("+++++++++++++++");
-console.log("fileName:---------", __filename);
-
-// app.use(express.static("public"));
 
 app.use("/public", express.static(path.join(__dirname, "public")));
 
@@ -478,138 +311,96 @@ app.use("/api/admin", AdminRouter);
 app.use("/api/user", UserRouter);
 app.use("/api/otp", SendOtpRouter);
 app.use("/api/chat", CommunicateRouter);
-app.use("/api/conversation", ConversationRouter);
 app.use("/api/location", LocationRouter);
-
-// app.use(express.static(path.join(__dirname, "public")));
-
-app.post("/api/upload/pdf", upload.single("pdfResume"), (req, res) => {
-  if (!req.file) {
-    return res
-      .status(400)
-      .json({ success: false, message: "No file uploaded." });
-  }
-
-  const { userId } = req.body;
-  if (!userId) {
-    return res
-      .status(400)
-      .json({ success: false, message: "User ID is required." });
-  }
-
-  const filePath = `/uploads/pdfs/${req.file.filename}`;
-  console.log("Uploaded PDF Path:", filePath);
-
-  res.status(200).json({
-    success: true,
-    message: "File uploaded successfully",
-    filePath: `http://your-server.com${filePath}`, // Return full URL
-    userId: userId,
-  });
-});
-// Serve PDFs
-app.get("/uploads/pdfs/:filename", (req, res) => {
-  const { filename } = req.params;
-  const filePath = path.join(__dirname, "uploads", "pdfs", filename);
-
-  if (fs.existsSync(filePath)) {
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
-    res.sendFile(filePath);
-  } else {
-    res.status(404).json({ success: false, message: "File not found" });
-  }
-});
-
-app.post("/api/request-pdf-access", (req, res) => {
-  const { uploaderId, viewerId, productId } = req.body;
-
-  if (!uploaderId || !viewerId || !productId) {
-    return res
-      .status(400)
-      .json({ success: false, message: "सभी फ़ील्ड्स अनिवार्य हैं।" });
-  }
-
-  // Notify uploader via socket
-  if (userSockets[uploaderId]) {
-    io.to(userSockets[uploaderId]).emit("pdf_access_request", {
-      viewerId,
-      productId,
-      message: `User ${viewerId} wants access to your PDF.`,
-    });
-  }
-
-  // Assume database call here to store request
-  console.log(
-    `Access request from ${viewerId} to ${uploaderId} for product ${productId}`
-  );
-
-  res
-    .status(200)
-    .json({ success: true, message: "Request sent successfully!" });
-});
-
-app.post("/api/respond-pdf-access", (req, res) => {
-  const { viewerId, uploaderId, approved, pdfUrl } = req.body;
-
-  if (!viewerId || !uploaderId || pdfUrl === undefined) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Missing required fields." });
-  }
-
-  if (approved) {
-    if (userSockets[viewerId]) {
-      io.to(userSockets[viewerId]).emit("pdf_access_granted", { pdfUrl });
-    }
-  } else {
-    if (userSockets[viewerId]) {
-      io.to(userSockets[viewerId]).emit("pdf_access_denied");
-    }
-  }
-
-  res
-    .status(200)
-    .json({ success: true, message: "Response sent successfully!" });
-});
-
-app.post("/api/upload", upload.single("image"), (req, res) => {
-  if (!req.file) {
-    return res.status(400).send("No file uploaded.");
-  }
-  const imageName = `image-${Date.now()}-${Math.random()
-    .toString(36)
-    .substr(2, 9)}.png`;
-  const imageUrl = `/public/images/${imageName}`;
-  console.log("File uploaded:", req.file.filename);
-  console.log("Generated image URL:", imageUrl);
-  fs.renameSync(
-    path.join(__dirname, "public", "images", req.file.filename),
-    path.join(__dirname, "public", "images", imageName)
-  );
-  res.status(200).json({
-    url: imageUrl,
-  });
-});
-
-app.post("/api/conversation/resetNewMessages", async (req, res) => {
-  const { conversationId } = req.body;
-
-  try {
-    await ConversationModel.findOneAndUpdate(
-      { conversationId },
-      { newMessages: 0 }
-    );
-    res.status(200).json({ message: "New messages reset successfully" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-const io2 = setupSocket(server);
 
 server.listen(PORT, () => {
   console.log(`Server running on http://:${PORT}`);
 });
+const onlineUsers = new Map(); // userId → socket.id
 
+io.on("connection", async (socket) => {
+  const userId = socket.handshake.query.userId;
+  // Validate ObjectId
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    console.log("Invalid userId format:", userId);
+    socket.emit("error", { message: "Invalid user ID format" });
+    return;
+  }
+
+  const user = await UserModel.findById(userId);
+
+  if (!user) {
+    console.log("User not found:", userId);
+    socket.emit("error", { message: "User not found" });
+    return;
+  }
+  console.log(`User connected: ${socket.id}, userId from query: ${userId}`);
+
+  console.log("User connected:", socket.id);
+  for (const [id, sId] of onlineUsers.entries()) {
+    if (sId === socket.id && id !== userId) {
+      onlineUsers.delete(id);
+    }
+  }
+
+  onlineUsers.set(userId, socket.id);
+  console.log(`User ${userId} connected/reconnected with socket ${socket.id}`);
+  // Listen for user registration
+  socket.on("joinRoom", async (userId) => {
+    try {
+      console.log("Registering user:", userId);
+
+      // Validate ObjectId
+      if (!mongoose.Types.ObjectId.isValid(userId)) {
+        console.log("Invalid userId format:", userId);
+        socket.emit("error", { message: "Invalid user ID format" });
+        return;
+      }
+
+      const user = await UserModel.findById(userId);
+
+      if (!user) {
+        console.log("User not found:", userId);
+        socket.emit("error", { message: "User not found" });
+        return;
+      }
+
+      socket.emit("joinRoomSuccess", {
+        message: "User successfully Joined Room",
+      });
+    } catch (error) {
+      console.error("Error in register event:", error);
+      socket.emit("error", {
+        message: "Failed to register user",
+        details: error.message,
+      });
+    }
+  });
+
+  socket.on("messageDelivered", async (data) => {
+    console.log("Message delivered event:", data._id);
+  });
+
+  socket.on("disconnect", () => {
+    // Remove disconnected user from onlineUsers list
+    for (const [id, sId] of onlineUsers.entries()) {
+      if (sId === socket.id) {
+        onlineUsers.delete(id);
+        console.log(`User ${id} disconnected`);
+        break;
+      }
+    }
+  });
+  socket.on("error", (error) => {
+    console.log(`Socket error on ${socket.id}:`, error);
+  });
+});
+
+io.on("error", (error) => {
+  console.log("Socket.IO global error:", error);
+});
+
+export { io, onlineUsers };
+// const { socketIo, onlineUsers } = setupSocket(io);
+log("Socket setup completed");
 export default app;

@@ -48,6 +48,11 @@ const UserSchema = new mongoose.Schema(
     oneTimePin: { type: String },
     otp: { type: String },
     otpExpire: { type: Date },
+    
+    updateCount: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true }
 );

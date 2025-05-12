@@ -1,123 +1,162 @@
-import { Server } from "socket.io";
 import mongoose from "mongoose";
+import { UserModel } from "./model/user.js";
 import { CommunicateModel } from "./model/chat.js";
+import { ConversationModel } from "./model/conversation.js";
 
-const userSocketMap = new Map();
+const onlineUsers = new Map(); // userId → socket.id
 
- export function setupSocket(server) {
-  const io = new Server(server, {
-    cors: {
-      origin: "*",
-      methods: ["GET", "POST"],
-    },
-  });
+const socketInit = (io) => {
+    const emitOnlineUsers = () => {
+        const onlineUserIds = Array.from(onlineUsers.keys());
+        io.emit("onlineUsers", onlineUserIds);
+    };
 
-  io.on("connection", (socket) => {
-    console.log("A user connected:", socket.id);
-
-    socket.on("joinRoom", (data) => {
-      const { userId } = data;
-      if (userId) {
-        userSocketMap.set(userId, socket.id);
-        console.log(`User ${userId} connected with Socket ID ${socket.id}`);
-      }
-    });
-
-    socket.on("sendMessage", async (data) => {
-      const { conversationId, senderId, receiverId, text, image, pdf } = data;
-      console.log("Received sendMessage event:", data);
-
-      if (!senderId || !mongoose.Types.ObjectId.isValid(senderId)) {
-        socket.emit("messageError", { error: "Invalid senderId" });
-        return;
-      }
-
-      if (!receiverId || !mongoose.Types.ObjectId.isValid(receiverId)) {
-        socket.emit("messageError", { error: "Invalid receiverId" });
-        return;
-      }
-
-      const message = {
-        senderId: new mongoose.Types.ObjectId(senderId),
-        receiverId: new mongoose.Types.ObjectId(receiverId),
-        text,
-        image,
-        pdf,
-        status: "pending",
-        createdTime: new Date(),
-        id: new mongoose.Types.ObjectId(),
-      };
-
-      try {
-        console.log("Saving message to database...");
-
-        const result = await CommunicateModel.findOneAndUpdate(
-          { conversationId },
-          { $push: { messages: message } },
-          { new: true, upsert: true }
-        );
-
-        console.log("Message saved successfully:", result);
-
-        const receiverSocketId = userSocketMap.get(receiverId);
-        if (receiverSocketId) {
-          io.to(receiverSocketId).emit("receiveMessage", message);
-        } else {
-          socket.emit("receiverOffline", { receiverId, conversationId });
+    io.on("connection", async (socket) => {
+        const userId = socket.handshake.query.userId;
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            socket.emit("error", { message: "Invalid user ID format" });
+            return;
         }
-      } catch (error) {
-        console.error("Message sending error:", error.message);
-        socket.emit("messageError", { error: error.message });
-      }
-    });
 
-    socket.on("messageSeen", async (data) => {
-      const { messageId } = data;
-      console.log("Marking message as seen:", messageId);
-
-      const result = await CommunicateModel.updateOne(
-        { "messages.id": messageId },
-        { $set: { "messages.$.status": "seen" } }
-      );
-
-      if (result.modifiedCount > 0) {
-        socket.emit("messageSeen", { messageId });
-      }
-    });
-
-    socket.on("receiverOnline", async (data) => {
-      const { receiverId } = data;
-      const receiverSocketId = userSocketMap.get(receiverId);
-      console.log(
-        `Receiver ${receiverId} is back online, sending pending messages.`
-      );
-
-      const messages = await CommunicateModel.find({
-        receiverId,
-        status: "pending",
-      });
-
-      messages.forEach((msg) => {
-        io.to(receiverSocketId).emit("receiveMessage", msg);
-        CommunicateModel.updateOne(
-          { "messages.id": msg.id },
-          { $set: { "messages.$.status": "delivered" } }
-        );
-      });
-    });
-
-    socket.on("disconnect", () => {
-      for (const [userId, socketId] of userSocketMap.entries()) {
-        if (socketId === socket.id) {
-          userSocketMap.delete(userId);
-          console.log(`User ${userId} disconnected`);
-          break;
+        const user = await UserModel.findById(userId);
+        if (!user) {
+            socket.emit("error", { message: "User not found" });
+            return;
         }
-      }
+
+        console.log(`✅ User connected: ${userId} → socket ${socket.id}`);
+
+        // Remove stale connections
+        for (const [id, sId] of onlineUsers.entries()) {
+            if (sId === socket.id && id !== userId) {
+                onlineUsers.delete(id);
+            }
+        }
+
+        // Register user
+        onlineUsers.set(userId, socket.id);
+        emitOnlineUsers();
+
+        // 🔁 Handle new message
+        socket.on("sendMessage", async (data) => {
+            const {
+                senderId,
+                receiverId,
+                conversationId,
+                productId,
+                productTypeId,
+                content,
+                type = "text",
+                status = "sent",
+                metaData = {},
+            } = data;
+
+            try {
+                // Find conversation or create new one
+                let conversation = conversationId
+                    ? await ConversationModel.findById(conversationId)
+                    : await ConversationModel.findOneAndUpdate(
+                        {
+                            participants: { $all: [senderId, receiverId] },
+                            product: productId,
+                        },
+                        {},
+                        {
+                            new: true,
+                            upsert: true,
+                            setDefaultsOnInsert: true,
+                        }
+                    );
+
+                if (!conversation) {
+                    socket.emit("error", {
+                        message: "Conversation not found or created",
+                    });
+                    return;
+                }
+
+                const newMessage = await CommunicateModel.create({
+                    chatId: conversation._id,
+                    senderId,
+                    productId,
+                    type,
+                    content,
+                    metaData,
+                    status,
+                });
+
+                await newMessage.populate("senderId");
+
+                // Send message to recipient
+                const recipientSocketId = onlineUsers.get(receiverId.toString());
+                if (recipientSocketId) {
+                    io.to(recipientSocketId).emit("newMessage", newMessage);
+                    io.to(recipientSocketId).emit("updateConversation", {
+                        conversationId: conversation._id,
+                        message: newMessage,
+                        unreadCount: 1,
+                    });
+                }
+
+                // Also emit to sender (to update their chat)
+                const senderSocketId = onlineUsers.get(senderId.toString());
+                if (senderSocketId) {
+                    io.to(senderSocketId).emit("newMessage", newMessage);
+                    io.to(senderSocketId).emit("updateConversation", {
+                        conversationId: conversation._id,
+                        message: newMessage,
+                        unreadCount: 0,
+                    });
+                }
+            } catch (err) {
+                console.error("Error sending message:", err);
+                socket.emit("error", { message: err.message });
+            }
+        });
+
+        // 📩 Read message
+        socket.on("messageRead", async ({ messageId }) => {
+            try {
+                await CommunicateModel.findByIdAndUpdate(messageId, { status: "read" });
+                socket.emit("messageReadAck", { messageId });
+            } catch (err) {
+                console.log("Error marking message read:", err);
+            }
+        });
+
+        // 🧑‍💻 Typing (optional)
+        socket.on("typing", ({ toUserId, conversationId }) => {
+            const recipientSocketId = onlineUsers.get(toUserId);
+            if (recipientSocketId) {
+                io.to(recipientSocketId).emit("typing", {
+                    from: userId,
+                    conversationId,
+                });
+            }
+        });
+
+        // ❌ Disconnect
+        socket.on("disconnect", () => {
+            for (const [id, sId] of onlineUsers.entries()) {
+                if (sId === socket.id) {
+                    onlineUsers.delete(id);
+                    console.log(`❌ User ${id} disconnected`);
+                    break;
+                }
+            }
+            emitOnlineUsers();
+        });
+
+        // Error
+        socket.on("error", (err) => {
+            console.log("Socket error:", err);
+        });
     });
-  });
 
-  return io;
-}
+    io.on("error", (error) => {
+        console.log("Socket.IO global error:", error);
+    });
+};
 
-
+export default socketInit;
+export { onlineUsers };

@@ -15,9 +15,14 @@ import { ServicesModel } from "../model/services.js";
 import { SmartPhoneModel } from "../model/smart_phone.js";
 import { OtherModel } from "../model/other.js";
 import { PropertyModel } from "../model/property.js";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { saveBase64Image } from "../utils/image_store.js";
 dotenv.config();
-
+// Fix __dirname for ES module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 export const addProduct_remove = async (req, res) => {
   try {
     // 🔍 Find the user
@@ -81,7 +86,7 @@ export const addProduct_remove = async (req, res) => {
   }
 };
 
-export const searchProduct = async (req, res) => {
+export const searchProduct1 = async (req, res) => {
   try {
     const { query } = req.body;
 
@@ -579,6 +584,96 @@ export const addProduct = async (req, res) => {
     res.status(500).json({ message: "Server error!", error: error.message });
   }
 };
+// export const updateProduct = async (req, res) => {
+//   try {
+//     const { userId, productId, productType, subProductType, ...data } =
+//       req.body;
+
+//     if (!productId)
+//       return res.status(400).json({ message: "Product ID is required" });
+
+//     if (!productType)
+//       return res.status(400).json({ message: "Product Type is required" });
+
+//     const _productType = await ProductTypeModel.findById(productType);
+//     if (!_productType)
+//       return res.status(404).json({ message: "Product Type not found" });
+
+//     if (!subProductType)
+//       return res.status(400).json({ message: "Sub-Product Type is required" });
+
+//     const _subProductType = await SubProductTypeModel.findOne({
+//       _id: subProductType,
+//       productType,
+//     });
+//     if (!_subProductType)
+//       return res.status(404).json({
+//         message:
+//           "SubProduct Type not found or does not belong to this Product Type",
+//       });
+
+//     const Model = productModels[_productType.modelName];
+//     if (!Model) return res.status(400).json({ message: "Invalid Model Name" });
+
+//     const product = await Model.findById(productId);
+//     if (!product) return res.status(404).json({ message: "Product not found" });
+
+//     // ✅ Parse and Save New Images (if sent)
+//     let productImages = req.body.productImages;
+//     let imagePaths = [];
+
+//     if (typeof productImages === "string") {
+//       try {
+//         productImages = JSON.parse(productImages);
+//       } catch (err) {
+//         console.error("❌ Failed to parse productImages:", err);
+//         productImages = [];
+//       }
+//     }
+
+//     if (Array.isArray(productImages) && productImages.length > 0) {
+//       for (const base64Image of productImages) {
+//         const imagePath = saveBase64Image(
+//           base64Image,
+//           "productImages",
+//           "product"
+//         );
+//         imagePaths.push(imagePath);
+//       }
+
+//       // Add new images to the existing ones without replacing the 0th index
+//       product.images = [product.images[0], ...imagePaths]; // Preserve the 0th index image
+//     }
+
+//     // ✅ Update fields with history tracking (similar to updateUser)
+//     for (const key in data) {
+//       if (Array.isArray(product[key]) && typeof data[key] === "string") {
+//         // If the field is an array and the new value is a string
+//         product[key] = [product[key][1] || product[key][0] || "", data[key]];
+//       } else if (Array.isArray(product[key]) && Array.isArray(data[key])) {
+//         // If both the field and new value are arrays
+//         product[key] = [product[key][1] || product[key][0] || "", data[key][0]];
+//       } else if (data[key]) {
+//         // For non-array fields or when the new value is not an array
+//         product[key] = data[key];
+//       }
+//     }
+
+//     // Log the updated product for debugging
+//     console.log("Product updated with history tracking");
+
+//     await product.save();
+
+//     return res.status(200).json({
+//       message: `${_productType.name} updated successfully`,
+//       product,
+//     });
+//   } catch (error) {
+//     console.error("❌ Server Error:", error.message);
+//     res.status(500).json({ message: "Server error!", error: error.message });
+//   }
+// };
+
 export const updateProduct = async (req, res) => {
   try {
     const { userId, productId, productType, subProductType, ...data } =
@@ -610,7 +705,19 @@ export const updateProduct = async (req, res) => {
     const Model = productModels[_productType.modelName];
     if (!Model) return res.status(400).json({ message: "Invalid Model Name" });
 
-    const product = await Model.findById(productId);
+    const product = await Model.findById(productId)
+      .populate({
+        path: "productType",
+      })
+      .populate({
+        path: "subProductType",
+        select: "-modelName -productType",
+      })
+      .populate({
+        path: "userId",
+        select:
+          "fName lName mName email phone profileImage state district country area ", // Only pull the fName of the user
+      });
     if (!product) return res.status(404).json({ message: "Product not found" });
 
     // ✅ Parse and Save New Images (if sent)
@@ -627,6 +734,7 @@ export const updateProduct = async (req, res) => {
     }
 
     if (Array.isArray(productImages) && productImages.length > 0) {
+      // Preserve the first image and push new ones
       for (const base64Image of productImages) {
         const imagePath = saveBase64Image(
           base64Image,
@@ -636,7 +744,9 @@ export const updateProduct = async (req, res) => {
         imagePaths.push(imagePath);
       }
 
-      data.images = imagePaths;
+      // Add new images to the existing ones without replacing the 0th index
+      product.images = product.images; // Preserve the 0th index image
+      product.images.push(...imagePaths);
     }
 
     // ✅ Update fields with history tracking (similar to updateUser)
@@ -668,9 +778,42 @@ export const updateProduct = async (req, res) => {
   }
 };
 
+export const deleteProduct1 = async (req, res) => {
+  try {
+    const { productId, productType } = req.query;
+
+    const _productType = await ProductTypeModel.findById(productType);
+    if (!_productType) {
+      return res.status(404).json({ message: "Product Type not found" });
+    }
+
+    const Model = productModels[_productType.modelName];
+    if (!Model) {
+      return res.status(400).json({ message: "Invalid product type model" });
+    }
+
+    const product = await Model.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Mark as soft-deleted
+    product.isDeleted = true;
+    await product.save();
+
+    return res
+      .status(200)
+      .json({ message: "Product deleted successfully (soft delete)" });
+  } catch (error) {
+    console.error("❌ Delete Error:", error.message);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
+  }
+};
 export const deleteProduct = async (req, res) => {
   try {
-    const { productId, productType } = req.body;
+    const { productId, productType } = req.params; // ✅ FIXED
 
     if (!productId || !productType) {
       return res
@@ -792,7 +935,19 @@ export const getFavoriteProducts = async (req, res) => {
 
       const ProductModel = productModels[modelName];
       if (ProductModel) {
-        const product = await ProductModel.findById(productId);
+        const product = await ProductModel.findById(productId)
+          .populate({
+            path: "productType",
+          })
+          .populate({
+            path: "subProductType",
+            select: "-modelName -productType",
+          })
+          .populate({
+            path: "userId", // Correct field to populate
+            select:
+              "fName lName mName email phone profileImage state district country area ", // Only pull the fName of the user
+          });
         if (product) {
           favoriteProducts.push({
             ...product._doc,
@@ -929,33 +1084,6 @@ export const addOtherProduct = async (req, res) => {
   }
 };
 
-export const getAllProducts1 = async (req, res) => {
-  try {
-    const allProducts = {};
-
-    // Iterate over all product models
-    for (const [key, Model] of Object.entries(productModels)) {
-      allProducts[key] = await Model.find({})
-        .populate({
-          path: "productType",
-          select: "-modelName",
-        })
-        .populate({
-          path: "subProductType",
-          select: "-modelName -productType",
-        });
-    }
-
-    return res.status(200).json({
-      message: "All products fetched successfully",
-      products: allProducts,
-    });
-  } catch (error) {
-    console.log("❌ Server Error:", error.message);
-    res.status(500).json({ message: "Server error!", error: error.message });
-  }
-};
-
 export const getAllProducts = async (req, res) => {
   try {
     const allProducts = {};
@@ -963,10 +1091,9 @@ export const getAllProducts = async (req, res) => {
     for (const [key, Model] of Object.entries(productModels)) {
       const modelSchemaPaths = Model.schema.paths;
 
-      let query = Model.find({})
+      let query = Model.find({ isActive: true, isDeleted: false })
         .populate({
           path: "productType",
-          select: "-modelName",
         })
         .populate({
           path: "subProductType",
@@ -1031,11 +1158,15 @@ export const getProductById = async (req, res) => {
     const product = await Model.findById(productId)
       .populate({
         path: "productType",
-        select: "-modelName",
       })
       .populate({
         path: "subProductType",
         select: "-modelName -productType",
+      })
+      .populate({
+        path: "userId",
+        select:
+          "fName lName mName email phone profileImage state district country area ", // Only pull the fName of the user
       });
 
     if (!product) {
@@ -1045,44 +1176,6 @@ export const getProductById = async (req, res) => {
     return res.status(200).json({
       message: "Product fetched successfully",
       product,
-    });
-  } catch (error) {
-    console.error("❌ Server Error:", error);
-    res.status(500).json({ message: "Server error!", error: error.message });
-  }
-};
-
-export const getProductByCategory1 = async (req, res) => {
-  try {
-    const { model, category } = req.query;
-
-    // Validate input
-    if (!model || !category) {
-      return res
-        .status(400)
-        .json({ message: "Product Type and Category are required" });
-    }
-
-    // Get the correct model
-    const Model = productModels[model];
-    if (!Model) {
-      return res.status(400).json({ message: "Invalid Product Type" });
-    }
-
-    // Fetch products by category string
-    const products = await Model.find({ categories: category })
-      .populate({
-        path: "productType",
-        select: "-modelName",
-      })
-      .populate({
-        path: "subProductType",
-        select: "-modelName -productType",
-      });
-
-    return res.status(200).json({
-      message: "Products fetched successfully",
-      products,
     });
   } catch (error) {
     console.error("❌ Server Error:", error);
@@ -1111,6 +1204,11 @@ export const getProductByCategory = async (req, res) => {
         .populate({
           path: "subProductType",
           select: "-modelName -productType",
+        })
+        .populate({
+          path: "userId",
+          select:
+            "fName lName mName email phone profileImage state district country area ", // Only pull the fName of the user
         });
 
       allProducts = allProducts.concat(products);
@@ -1176,7 +1274,12 @@ export const getProductsByUser = async (req, res) => {
           path: "subProductType",
           select: "-modelName -productType",
         })
-        .lean();
+        .populate({
+          path: "userId",
+          select:
+            "fName lName mName email phone profileImage state district country area ", // Only pull the fName of the user
+        });
+
       allUserProducts.push(...products);
     }
     console.log(allUserProducts);
@@ -1187,6 +1290,235 @@ export const getProductsByUser = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error in getProductsByUserId:", error.message);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
+  }
+};
+
+// serch api
+
+const searchableFields = [
+  "adTitle",
+  "description",
+  "price",
+  "brand",
+  "model",
+  "bhk",
+  "address1",
+  "facing",
+  "area",
+];
+
+export const searchProduct12 = async (req, res) => {
+  const { query, categories } = req.query;
+
+  if (!query) {
+    return res.status(400).json({ message: "Search query is required" });
+  }
+
+  const regex = new RegExp(`^${query}`, "i");
+
+  const baseQuery = {
+    $or: searchableFields.map((field) => ({ [field]: regex })),
+  };
+
+  // Filter by `categories` field (not productType)
+  if (categories && categories.trim() !== "") {
+    baseQuery.categories = categories;
+  }
+
+  try {
+    const results = [];
+
+    for (const modelName in productModels) {
+      const Model = productModels[modelName];
+
+      const modelResults = await Model.find(baseQuery)
+        .populate({
+          path: "productType",
+          select: "_id name modelName",
+        })
+        .populate({
+          path: "subProductType",
+          select: "_id name",
+        })
+        .populate({
+          path: "userId",
+          select:
+            "fName lName mName email phone state district country area profileImage _id",
+        })
+        .lean();
+
+      results.push(...modelResults.map((r) => ({ ...r, type: modelName })));
+    }
+
+    res.json({
+      message: "Search results",
+      count: results.length,
+      data: results,
+    });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Something went wrong", error: error.message });
+  }
+};
+
+export const searchProduct = async (req, res) => {
+  const { query, categories } = req.query;
+
+  // if (!query) {
+  //   return res.status(400).json({ message: "Search query is required" });
+  // }
+
+  const regex = new RegExp(`^${query}`, "i");
+
+  const baseQuery = {
+    $or: searchableFields.map((field) => ({ [field]: regex })),
+    isActive: true,
+    isDeleted: false,
+  };
+
+  // ✅ Fix for array-based 'categories'
+  if (categories && categories.trim() !== "") {
+    baseQuery.categories = { $in: [categories] };
+  }
+
+  try {
+    const results = [];
+
+    for (const modelName in productModels) {
+      const Model = productModels[modelName];
+
+      const modelResults = await Model.find(baseQuery)
+        .populate({
+          path: "productType",
+          select: "_id name modelName",
+        })
+        .populate({
+          path: "subProductType",
+          select: "_id name",
+        })
+        .populate({
+          path: "userId",
+          select:
+            "fName lName mName email phone state district country area profileImage _id",
+        })
+        .lean();
+
+      results.push(...modelResults.map((r) => ({ ...r, type: modelName })));
+    }
+
+    res.json({
+      message: "Search results",
+      count: results.length,
+      data: results,
+    });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Something went wrong", error: error.message });
+  }
+};
+
+export const deleteProductImage = async (req, res) => {
+  const { imagePath, productId, modelName } = req.body;
+
+  if (!imagePath) {
+    return res.status(400).json({ message: "Image path is required" });
+  }
+  if (!productId) {
+    return res.status(400).json({ message: "Product ID is required" });
+  }
+  if (!modelName) {
+    return res.status(400).json({ message: "Model name is required" });
+  }
+
+  try {
+    // Remove the image path from the database
+    const Model = productModels[modelName];
+    if (!Model) {
+      return res.status(400).json({ message: "Invalid Model Name" });
+    }
+
+    const product = await Model.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Create the full path to the image
+    const imageFilePath = path.join(__dirname, "..", imagePath);
+
+    // Delete the image file from the server
+    if (fs.existsSync(imageFilePath)) {
+      fs.unlinkSync(imageFilePath);
+      console.log("Image deleted from server");
+    } else {
+      console.log("Image file not found");
+    }
+
+    // Update the product document to remove the image path
+    product.images = product.images.filter((img) => img !== imagePath);
+    await product.save();
+    console.log("Image path removed from database");
+
+    return res.status(200).json({ message: "Image deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting image:", error);
+    return res.status(500).json({ message: "Failed to delete image" });
+  }
+};
+
+//product active-inactive
+export const toggleProductVisibility = async (req, res) => {
+  try {
+    const { productId, productType } = req.body;
+
+    // if (!productId || !productType || typeof isActive !== "boolean") {
+    //   return res.status(400).json({ message: "Missing required fields" });
+    // }
+
+    // Get model dynamically
+    const _productType = await ProductTypeModel.findById(productType);
+    if (!_productType) {
+      return res.status(404).json({ message: "Invalid product type" });
+    }
+
+    const Model = productModels[_productType.modelName];
+    if (!Model) {
+      return res.status(400).json({ message: "Invalid model" });
+    }
+
+    const product = await Model.findById(productId)
+      .populate({
+        path: "productType",
+      })
+      .populate({
+        path: "subProductType",
+        select: "-modelName -productType",
+      })
+      .populate({
+        path: "userId",
+        select:
+          "fName lName mName email phone profileImage state district country area ", // Only pull the fName of the user
+      });
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+    // Toggle visibility
+    const isActive = !product.isActive;
+    product.isActive = isActive;
+    await product.save();
+
+    return res.status(200).json({
+      message: `Product ${isActive ? "enabled" : "disabled"} successfully`,
+      product,
+    });
+  } catch (error) {
+    console.log("❌ Error toggling visibility:", error.message);
     return res
       .status(500)
       .json({ message: "Server error", error: error.message });

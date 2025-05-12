@@ -14,6 +14,7 @@ import {
   getProductTypes,
   getProductSubType,
   getUserByID,
+  repostProducts,
 } from "../controller/user.js";
 import { upload } from "../upload.js";
 import authenticateUser from "../auth/middle.js";
@@ -26,6 +27,7 @@ router.post("/verifyPin", verifyPin);
 router.post("/verifyOtpUser", verifyOtp);
 router.post("/reset-password", resetPassword);
 router.post("/login", userLogin);
+router.post("/report-product", repostProducts);
 
 router.post(
   "/signup",
@@ -55,6 +57,8 @@ router.get("/get-occupations", getOtherOccupations);
 router.get("/get-productType", getProductTypes);
 
 router.get("/get-sub-product-type/:sub_product_type_id", getProductSubType);
+
+
 
 export default router;
 

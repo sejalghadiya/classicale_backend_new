@@ -1,5 +1,4 @@
 import { UserModel } from "../model/user.js";
-
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { CodeModel } from "../model/pin.js";
@@ -9,6 +8,7 @@ import { read } from "fs";
 import { SubProductTypeModel } from "../model/sub_product_type.js";
 import { ProductTypeModel } from "../model/product_type.js";
 import { saveBase64Image } from "../utils/image_store.js";
+import { ReportProductModel } from "../model/reoprt_product.js";
 
 const generateOtp = (firstName, lastName) => {
   const firstNamePrefix = firstName.slice(0, 2).toUpperCase();
@@ -18,6 +18,7 @@ const generateOtp = (firstName, lastName) => {
 };
 
 export const userSignUp = async (req, res) => {
+  console.log("++++++++++++++++++++++++++++++");
   try {
     const {
       phone,
@@ -259,6 +260,7 @@ export const userLogin = async (req, res) => {
         isOtpVerified: user.isOtpVerified,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
+        aadharNumber: user.aadharNumber,
       },
     });
   } catch (error) {
@@ -308,22 +310,49 @@ export const updateUser = async (req, res) => {
       ];
     }
 
-    // ✅ Save base64 adhar front to public and set URL
-    // if (
-    //   updatedFields.profileImage &&
-    //   updatedFields.profileImage.startsWith("data:image")
-    // ) {
-    //   const imagePath = saveBase64Image(
-    //     updatedFields.profileImage,
-    //     "profileImages",
-    //     "profile"
-    //   );
-    //   user.profileImage = [
-    //     user.profileImage?.[1] || user.profileImage?.[0] || "",
-    //     imagePath,
-    //   ];
-    // }
+    // ✅ Save base64 Aadhaar front image and update path
+    if (
+      updatedFields.aadhaarImage1 &&
+      updatedFields.aadhaarImage1.startsWith("data:image")
+    ) {
+      const frontPath = saveBase64Image(
+        updatedFields.aadhaarImage1,
+        "aadhaarCardImage1",
+        "aadhar_front"
+      );
+      //user.aadhaarCardImage1 = frontPath;
+      console.log("Image Path:", frontPath);
+      user.aadhaarCardImage1 = [
+        user.aadhaarCardImage1?.[1] || user.aadhaarCardImage1?.[0] || "",
+        frontPath,
+      ];
+    }
 
+    // ✅ Save base64 Aadhaar back image and update path
+    if (
+      updatedFields.aadhaarImage2 &&
+      updatedFields.aadhaarImage2.startsWith("data:image")
+    ) {
+      const backPath = saveBase64Image(
+        updatedFields.aadhaarImage2,
+        "aadhaarCardImage2",
+        "aadhar_back"
+      );
+      console.log("Image Path:", backPath);
+      user.aadhaarCardImage2 = [
+        user.aadhaarCardImage2?.[1] || user.aadhaarCardImage2?.[0] || "",
+        backPath,
+      ];
+    }
+
+    if (user.updateCount >= 3) {
+      return res.status(403).json({
+        message:
+          "Update limit reached. You can't update your profile more than 3 times.",
+      });
+    }
+    user.updateCount = (user.updateCount || 0) + 1;
+    
     await user.save();
 
     return res.status(200).json({
@@ -471,155 +500,6 @@ export const verifyPin = async (req, res) => {
   }
 };
 
-export const updateUser1 = async (req, res) => {
-  try {
-    let { _id, ...updates } = req.body;
-
-    // ✅ Validate User ID (Corrected)
-    if (!_id) {
-      return res.status(400).json({ message: "User ID is required" });
-    }
-
-    // ✅ Convert User ID to ObjectId if needed
-    const userId = mongoose.Types.ObjectId.isValid(_id)
-      ? new mongoose.Types.ObjectId(_id)
-      : _id;
-
-    // 🔍 Find User by userId (Corrected)
-    const existingUser = await UserModel.findOne({ _id: userId });
-
-    if (!existingUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const objectId = existingUser._id;
-
-    // 🔄 Handle Image Uploads (If Provided)
-    const profileImage = req.files?.image?.[0]?.path;
-    const aadhaarFrontImage = req.files?.aadhaarProofs?.[0]?.path;
-    const aadhaarBackImage = req.files?.aadhaarProofs?.[1]?.path;
-
-    // ✅ Update Images Only If They Are Provided
-    if (profileImage) updates.image = profileImage;
-    if (aadhaarFrontImage) updates.aadhaarFront = aadhaarFrontImage;
-    if (aadhaarBackImage) updates.aadhaarBack = aadhaarBackImage;
-
-    // 🔄 Update Only Provided Fields
-    Object.keys(updates).forEach((key) => {
-      if (updates[key] !== undefined && updates[key] !== null) {
-        existingUser[key] = updates[key];
-      }
-    });
-
-    await existingUser.save();
-
-    return res.status(200).json({
-      message: "User updated successfully",
-      objectId,
-      updatedData: updates,
-    });
-  } catch (err) {
-    console.error("❌ Error updating user:", err);
-    return res
-      .status(500)
-      .json({ message: "Internal Server Error", error: err.message });
-  }
-};
-
-export const updateUser2 = async (req, res) => {
-  try {
-    let { userId, ...updateData } = req.body;
-
-    // ✅ Validate User ID
-    if (!userId) {
-      return res.status(400).json({ message: "User ID is required" });
-    }
-
-    // ✅ Convert User ID to ObjectId if needed
-    const userObjectId = mongoose.Types.ObjectId.isValid(userId)
-      ? new mongoose.Types.ObjectId(userId)
-      : userId;
-
-    // 🔍 Find User
-    const user = await UserModel.findById(userObjectId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // ✅ Fields that need array shifting
-    const arrayFields = [
-      "phone",
-      "fName",
-      "lName",
-      "mName",
-      "gender",
-      "state",
-      "district",
-      "area",
-      "profileImage",
-      "aadhaarCardImage1",
-      "aadhaarCardImage2",
-      "aadharNumber",
-    ];
-
-    let updatedFields = {}; // Store updated fields
-
-    // ✅ Handle Image Uploads (If Provided)
-    const profileImage = req.files?.image?.[0]?.path;
-    const aadhaarFrontImage = req.files?.aadhaarProofs?.[0]?.path;
-    const aadhaarBackImage = req.files?.aadhaarProofs?.[1]?.path;
-
-    if (profileImage) updateData.profileImage = profileImage;
-    if (aadhaarFrontImage) updateData.aadhaarCardImage1 = aadhaarFrontImage;
-    if (aadhaarBackImage) updateData.aadhaarCardImage2 = aadhaarBackImage;
-
-    // ✅ Update & Shift Array Values
-    arrayFields.forEach((field) => {
-      if (updateData[field]) {
-        if (!Array.isArray(user[field])) {
-          user[field] = [];
-        }
-
-        // Ensure array has exactly 2 elements
-        if (user[field].length > 1) {
-          user[field].shift(); // Remove index[0] (old)
-        }
-
-        // Shift index[1] to index[0] if exists
-        if (user[field].length === 1) {
-          user[field][0] = user[field][0];
-        }
-
-        // ✅ Save new data at index[1]
-        user[field][1] = updateData[field];
-
-        // Store updated field for response
-        updatedFields[field] = user[field][1];
-      }
-    });
-
-    // ✅ Update Other Non-Array Fields
-    Object.keys(updateData).forEach((key) => {
-      if (!arrayFields.includes(key)) {
-        user[key] = updateData[key];
-        updatedFields[key] = updateData[key];
-      }
-    });
-
-    // ✅ Save updated user
-    await user.save();
-
-    return res.status(200).json({
-      message: "User updated successfully",
-      updatedFields, // ✅ Return only newly updated fields
-    });
-  } catch (error) {
-    console.error("❌ Error updating user:", error);
-    return res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
-  }
-};
 
 export const deleteUser = async (req, res) => {
   try {
@@ -825,5 +705,49 @@ export const getProductSubType = async (req, res) => {
   } catch (err) {
     console.error("Error fetching product sub types:", err);
     return res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+export const repostProducts = async (req, res) => {
+  try {
+    const { productId, userId, desctiption, modelName, image } = req.body;
+    let imagePath = "";
+    if (!productId || !userId || !desctiption || !modelName) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    if (image && image.startsWith("data:image")) {
+      const imgPath = saveBase64Image(
+        image,
+        "ReportProductImages",
+        "report_product"
+      );
+      //user.aadhaarCardImage1 = frontPath;
+      imagePath = imgPath;
+    }
+
+    if (imagePath.isEmpty) {
+      return res.status(400).json({ message: "Image is required" });
+    }
+
+    const newReportProduct = new ReportProductModel({
+      userId: userId,
+      productId: productId,
+      desctiption: desctiption,
+      image: imagePath,
+      modelName: modelName,
+    });
+
+    await newReportProduct.save();
+
+    return res.status(200).json({
+      message: "Product reported successfully",
+      reportProduct: newReportProduct,
+    });
+  } catch (error) {
+    console.error("Error reporting product:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
