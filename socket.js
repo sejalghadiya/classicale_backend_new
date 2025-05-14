@@ -84,6 +84,7 @@ const socketInit = (io) => {
     socket.on("error", (error) => {
       console.log(`Socket error on ${socket.id}:`, error);
     });
+    
   });
 };
 
