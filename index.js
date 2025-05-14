@@ -20,6 +20,7 @@ import LocationRouter from "./routes/location.js";
 import fs from "fs";
 import { UserModel } from "./model/user.js";
 import { log } from "console";
+import socketInit from "./socket.js";
 dotenv.config();
 
 const app = express();
@@ -316,91 +317,12 @@ app.use("/api/location", LocationRouter);
 server.listen(PORT, () => {
   console.log(`Server running on http://:${PORT}`);
 });
-const onlineUsers = new Map(); // userId → socket.id
-
-io.on("connection", async (socket) => {
-  const userId = socket.handshake.query.userId;
-  // Validate ObjectId
-  if (!mongoose.Types.ObjectId.isValid(userId)) {
-    console.log("Invalid userId format:", userId);
-    socket.emit("error", { message: "Invalid user ID format" });
-    return;
-  }
-
-  const user = await UserModel.findById(userId);
-
-  if (!user) {
-    console.log("User not found:", userId);
-    socket.emit("error", { message: "User not found" });
-    return;
-  }
-  console.log(`User connected: ${socket.id}, userId from query: ${userId}`);
-
-  console.log("User connected:", socket.id);
-  for (const [id, sId] of onlineUsers.entries()) {
-    if (sId === socket.id && id !== userId) {
-      onlineUsers.delete(id);
-    }
-  }
-
-  onlineUsers.set(userId, socket.id);
-  console.log(`User ${userId} connected/reconnected with socket ${socket.id}`);
-  // Listen for user registration
-  socket.on("joinRoom", async (userId) => {
-    try {
-      console.log("Registering user:", userId);
-
-      // Validate ObjectId
-      if (!mongoose.Types.ObjectId.isValid(userId)) {
-        console.log("Invalid userId format:", userId);
-        socket.emit("error", { message: "Invalid user ID format" });
-        return;
-      }
-
-      const user = await UserModel.findById(userId);
-
-      if (!user) {
-        console.log("User not found:", userId);
-        socket.emit("error", { message: "User not found" });
-        return;
-      }
-
-      socket.emit("joinRoomSuccess", {
-        message: "User successfully Joined Room",
-      });
-    } catch (error) {
-      console.error("Error in register event:", error);
-      socket.emit("error", {
-        message: "Failed to register user",
-        details: error.message,
-      });
-    }
-  });
-
-  socket.on("messageDelivered", async (data) => {
-    console.log("Message delivered event:", data._id);
-  });
-
-  socket.on("disconnect", () => {
-    // Remove disconnected user from onlineUsers list
-    for (const [id, sId] of onlineUsers.entries()) {
-      if (sId === socket.id) {
-        onlineUsers.delete(id);
-        console.log(`User ${id} disconnected`);
-        break;
-      }
-    }
-  });
-  socket.on("error", (error) => {
-    console.log(`Socket error on ${socket.id}:`, error);
-  });
-});
 
 io.on("error", (error) => {
   console.log("Socket.IO global error:", error);
 });
+socketInit(io);
 
-export { io, onlineUsers };
-// const { socketIo, onlineUsers } = setupSocket(io);
+export { io };
 log("Socket setup completed");
 export default app;
