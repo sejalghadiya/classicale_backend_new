@@ -778,39 +778,6 @@ export const updateProduct = async (req, res) => {
   }
 };
 
-export const deleteProduct1 = async (req, res) => {
-  try {
-    const { productId, productType } = req.query;
-
-    const _productType = await ProductTypeModel.findById(productType);
-    if (!_productType) {
-      return res.status(404).json({ message: "Product Type not found" });
-    }
-
-    const Model = productModels[_productType.modelName];
-    if (!Model) {
-      return res.status(400).json({ message: "Invalid product type model" });
-    }
-
-    const product = await Model.findById(productId);
-    if (!product) {
-      return res.status(404).json({ message: "Product not found" });
-    }
-
-    // Mark as soft-deleted
-    product.isDeleted = true;
-    await product.save();
-
-    return res
-      .status(200)
-      .json({ message: "Product deleted successfully (soft delete)" });
-  } catch (error) {
-    console.error("❌ Delete Error:", error.message);
-    return res
-      .status(500)
-      .json({ message: "Server error", error: error.message });
-  }
-};
 export const deleteProduct = async (req, res) => {
   try {
     const { productId, productType } = req.params; // ✅ FIXED
@@ -1225,35 +1192,6 @@ export const getProductByCategory = async (req, res) => {
 };
 
 // GET /api/products/by-user/:userId
-export const getProductsByUser1 = async (req, res) => {
-  try {
-    const { userId } = req.params;
-
-    // Validate ObjectId (optional but good)
-    if (mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: "Invalid UserId" });
-    }
-
-    // Example: fetch from all models
-    let allUserProducts = [];
-
-    for (const key in productModels) {
-      const Model = productModels[key];
-      const products = await Model.find({ userId }).lean();
-      if (products.length > 0) {
-        allUserProducts.push(...products);
-      }
-    }
-
-    return res.status(200).json({
-      count: allUserProducts.length,
-      products: allUserProducts,
-    });
-  } catch (err) {
-    console.log("❌ Error fetching user's products:", err.message);
-    res.status(500).json({ message: "Server error", error: err.message });
-  }
-};
 export const getProductsByUser = async (req, res) => {
   try {
     const { userId } = req.query;
@@ -1310,61 +1248,6 @@ const searchableFields = [
   "area",
 ];
 
-export const searchProduct12 = async (req, res) => {
-  const { query, categories } = req.query;
-
-  if (!query) {
-    return res.status(400).json({ message: "Search query is required" });
-  }
-
-  const regex = new RegExp(`^${query}`, "i");
-
-  const baseQuery = {
-    $or: searchableFields.map((field) => ({ [field]: regex })),
-  };
-
-  // Filter by `categories` field (not productType)
-  if (categories && categories.trim() !== "") {
-    baseQuery.categories = categories;
-  }
-
-  try {
-    const results = [];
-
-    for (const modelName in productModels) {
-      const Model = productModels[modelName];
-
-      const modelResults = await Model.find(baseQuery)
-        .populate({
-          path: "productType",
-          select: "_id name modelName",
-        })
-        .populate({
-          path: "subProductType",
-          select: "_id name",
-        })
-        .populate({
-          path: "userId",
-          select:
-            "fName lName mName email phone state district country area profileImage _id",
-        })
-        .lean();
-
-      results.push(...modelResults.map((r) => ({ ...r, type: modelName })));
-    }
-
-    res.json({
-      message: "Search results",
-      count: results.length,
-      data: results,
-    });
-  } catch (error) {
-    console.error(error);
-    res
-      .status(500)
-      .json({ message: "Something went wrong", error: error.message });
-  }
-};
 
 export const searchProduct = async (req, res) => {
   const { query, categories } = req.query;

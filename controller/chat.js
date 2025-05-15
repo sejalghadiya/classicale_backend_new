@@ -13,7 +13,7 @@ import { PropertyModel } from "../model/property.js";
 import { ServicesModel } from "../model/services.js";
 import { SmartPhoneModel } from "../model/smart_phone.js";
 import { io } from "../index.js";
-import { onlineUsers } from "../socket.js";
+import { onlineUsers, joinConversation } from "../socket.js";
 const productModels = {
   Bike: BikeModel,
   Car: CarModel,
@@ -186,12 +186,26 @@ export const sendMessage = async (req, res) => {
         (id) => id.toString() !== senderId
       );
       console.log("recipientId", recipientId);
-      const recipientSocketId = onlineUsers.get(recipientId.toString());
+      const onlineUserSocketId = onlineUsers.get(recipientId.toString());
+      const onlineSenderSocketId = onlineUsers.get(senderId.toString());
+      const recipientSocketId = joinConversation.get(recipientId.toString());
+
+      if (onlineUserSocketId) {
+        io.to(onlineUserSocketId).emit("fetchAPI", {
+          message: "fetch message",
+        });
+      }
+      if (onlineSenderSocketId) {
+        io.to(onlineSenderSocketId).emit("fetchAPI", {
+          message: "fetch message",
+        });
+      }
 
       if (recipientSocketId) {
         console.log("recipientSocketId", recipientSocketId);
         io.to(recipientSocketId).emit("message", newMessage);
       }
+
       // Emit the message to the socket
       // socket.emit("message", newMessage);
       return res.status(200).json({
@@ -325,19 +339,23 @@ export const fetchMessages = async (req, res) => {
 // update message status
 export const updateMessageStatus = async (messageId) => {
   try {
-    const updatedMessage = await CommunicateModel.findByIdAndUpdate(messageId, {
-      status: "delivered",
-    });
+    const updatedMessage = await CommunicateModel.findByIdAndUpdate(
+      messageId,
+      {
+        status: "delivered",
+      },
+      { new: true } // returns the updated document instead of the original
+    );
+
     if (!updatedMessage) {
       io.emit("messageDeliveredError", {
         message: "Message not found",
         error: "Message not found",
       });
-      return res.status(404).json({ message: "Message not found" });
+    
     }
-    res.status(200).json({
+    io.emit("messageDelivered", {
       message: "Message status updated successfully",
-      status: 200,
       data: updatedMessage,
     });
   } catch (error) {
@@ -346,6 +364,43 @@ export const updateMessageStatus = async (messageId) => {
       message: "Error updating message status",
       error: error.message,
     });
+    // res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// get userId and conversationId then update the all messages to delivered if it is not sent by the userId
+export const updateAllMessagesStatus = async (req, res) => {
+  const { userId, conversationId } = req.body;
+
+  try {
+    // Step 1: Find all matching messages
+    const messagesToUpdate = await CommunicateModel.find({
+      chatId: conversationId,
+      senderId: { $ne: userId },
+      status: { $ne: "read" },
+    });
+
+    if (messagesToUpdate.length === 0) {
+      return res.status(404).json({ message: "No unread messages to update" });
+    }
+
+    // Step 2: Update each message and collect updated versions
+    const updatedMessages = await Promise.all(
+      messagesToUpdate.map(async (msg) => {
+        msg.status = "read";
+        return await msg.save(); // Save the updated message and return it
+      })
+    );
+
+    // Step 3: Send updated messages in response
+    res.status(200).json({
+      message: "Messages status updated successfully",
+      status: 200,
+      data: updatedMessages,
+    });
+  } catch (error) {
+    console.error("Error updating messages status:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
+

@@ -24,14 +24,15 @@ const socketInit = (io) => {
         // Check if userId is valid
         if (!conversationId) {
           socket.emit("error", {
-            message: "Invalid userId",
+            message: "Invalid chatId",
           });
           return;
         }
         joinConversation.set(conversationId, socket.id);
-        console.log("Registering user:", userId);
-        socket.emit("joinRoomSuccess", {
-          message: "User successfully Joined Room",
+        console.log("Registering user:", conversationId);
+        socket.emit("joinRoom", {
+          message: "User successfully registered to Room",
+          conversationId,
         });
       } catch (error) {
         console.error("Error in register event:", error);
@@ -84,9 +85,8 @@ const socketInit = (io) => {
     socket.on("error", (error) => {
       console.log(`Socket error on ${socket.id}:`, error);
     });
-    
   });
 };
 
 export default socketInit;
-export { onlineUsers };
+export { onlineUsers, joinConversation };

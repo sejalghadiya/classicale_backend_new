@@ -1,10 +1,12 @@
 import express from "express";
 import {
-
   adminLogin,
- 
+  deleteProduct,
+  getProductById,
   getProductType,
-  getProductWithType
+  getProductWithType,
+  getUserByUserCategory,
+  updateProduct
 } from "../controller/admin.js";
 
 import multer from "multer";
@@ -19,5 +21,13 @@ router.post("/login", adminLogin);
 
 router.get("/get_productS_Type", getProductType);
 
-router.get("/get_product_with_type", getProductWithType );
+router.get("/get_product_with_type", getProductWithType);
+
+router.get("/get_user_by_userCategory", getUserByUserCategory);
+
+router.get("/get_product", getProductById);
+
+router.put("/update_product_for_admin", updateProduct);
+
+router.delete("/delete_product_by_admin", deleteProduct);
 export default router;

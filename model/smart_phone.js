@@ -6,7 +6,6 @@ const SmartPhoneSchema = new mongoose.Schema(
     model: { type: [String] },
     price: { type: [String] },
     batteryBackup: { type: [String] },
-    year: { type: [String] },
     storage: { type: [String] },
     adTitle: { type: [String] },
     description: { type: [String] },
