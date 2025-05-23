@@ -1248,31 +1248,85 @@ const searchableFields = [
   "area",
 ];
 
-
 export const searchProduct = async (req, res) => {
   const { query, categories } = req.query;
 
-  // if (!query) {
-  //   return res.status(400).json({ message: "Search query is required" });
-  // }
+  console.log("search query", query);
 
-  const regex = new RegExp(`^${query}`, "i");
+  const regex = query ? new RegExp(query, "i") : null;
 
+  console.log("regex", regex);
+
+  // Detect matching product types (like "car", "bike") from query
+  const matchedProductTypes = Object.keys(productModels).filter((key) =>
+    regex?.test(key)
+  );
+
+  console.log("matchedProductTypes", matchedProductTypes);
+  if (matchedProductTypes.length > 0) {
+    console.log("matchedProductTypes", matchedProductTypes.length);
+
+    // If a matching product type was found, then sent all products of that type
+    const results = [];
+    for (const modelName of matchedProductTypes) {
+      const Model = productModels[modelName];
+      console.log("modelName", Model);
+
+      const modelResults = await Model.find({
+        isActive: true,
+        isDeleted: false,
+      })
+        .populate({
+          path: "productType",
+          select: "_id name modelName",
+        })
+        .populate({
+          path: "subProductType",
+          select: "_id name",
+        })
+        .populate({
+          path: "userId",
+          select:
+            "fName lName mName email phone state district country area profileImage _id",
+        })
+        .lean();
+      results.push(...modelResults.map((r) => ({ ...r, type: modelName })));
+    }
+    console.log("results", results);
+    if (results.length === 0) {
+      return res.status(404).json({ message: "No products found" });
+    }
+
+    return res.json({
+      message: "Search results",
+      count: results.length,
+      data: results,
+    });
+  }
+
+  // Construct base query
   const baseQuery = {
-    $or: searchableFields.map((field) => ({ [field]: regex })),
     isActive: true,
     isDeleted: false,
   };
 
-  // ✅ Fix for array-based 'categories'
-  if (categories && categories.trim() !== "") {
-    baseQuery.categories = { $in: [categories] };
+  if (regex) {
+    baseQuery.$or = searchableFields.map((field) => ({
+      [field]: regex,
+    }));
   }
+
+  // If a matching product type was found in the query, include it
+  const modelsToSearch = categories
+    ? [categories]
+    : matchedProductTypes.length > 0
+    ? matchedProductTypes
+    : Object.keys(productModels);
 
   try {
     const results = [];
 
-    for (const modelName in productModels) {
+    for (const modelName of modelsToSearch) {
       const Model = productModels[modelName];
 
       const modelResults = await Model.find(baseQuery)
@@ -1300,12 +1354,71 @@ export const searchProduct = async (req, res) => {
       data: results,
     });
   } catch (error) {
-    console.error(error);
-    res
-      .status(500)
-      .json({ message: "Something went wrong", error: error.message });
+    console.error("Error in searchProduct:", error);
+    res.status(500).json({
+      message: "Something went wrong",
+      error: error.message,
+    });
   }
 };
+
+// export const searchProduct = async (req, res) => {
+//   const { query, categories } = req.query;
+
+//   // if (!query) {
+//   //   return res.status(400).json({ message: "Search query is required" });
+//   // }
+
+//   const regex = new RegExp(`^${query}`, "i");
+
+//   const baseQuery = {
+//     $or: searchableFields.map((field) => ({ [field]: regex })),
+//     isActive: true,
+//     isDeleted: false,
+//   };
+
+//   // ✅ Fix for array-based 'categories'
+//   if (categories && categories.trim() !== "") {
+//     baseQuery.categories = { $in: [categories] };
+//   }
+
+//   try {
+//     const results = [];
+
+//     for (const modelName in productModels) {
+//       const Model = productModels[modelName];
+
+//       const modelResults = await Model.find(baseQuery)
+//         .populate({
+//           path: "productType",
+//           select: "_id name modelName",
+//         })
+//         .populate({
+//           path: "subProductType",
+//           select: "_id name",
+//         })
+//         .populate({
+//           path: "userId",
+//           select:
+//             "fName lName mName email phone state district country area profileImage _id",
+//         })
+//         .lean();
+
+//       results.push(...modelResults.map((r) => ({ ...r, type: modelName })));
+//     }
+
+//     res.json({
+//       message: "Search results",
+//       count: results.length,
+//       data: results,
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res
+//       .status(500)
+//       .json({ message: "Something went wrong", error: error.message });
+//   }
+// };
 
 export const deleteProductImage = async (req, res) => {
   const { imagePath, productId, modelName } = req.body;

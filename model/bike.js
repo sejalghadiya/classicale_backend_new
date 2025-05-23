@@ -26,6 +26,11 @@ const BikeSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "SubProductType",
     },
+    // viewCount: {
+    //   type: Number,
+    //   default: 0,
+    // },
+    //viewedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "user" }],
   },
   {
     timestamps: true,

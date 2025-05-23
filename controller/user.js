@@ -41,15 +41,6 @@ export const userSignUp = async (req, res) => {
       profileImage,
     } = req.body;
 
-    // ✅ Step 1: Email Validation
-    // const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    // console.log(req.body);
-    // if (!emailRegex.test(email)) {
-    //   return res
-    //     .status(400)
-    //     .json({ message: "Please enter a valid email address!" });
-    // }
-
     const emailRegex = /^[a-zA-Z0-9]+@[a-zA-Z0-9]+\.[a-zA-Z]+$/;
 
     console.log(req.body);
@@ -222,6 +213,14 @@ export const userLogin = async (req, res) => {
       requiresVerification = true;
       verificationType = "OTP";
     }
+    if(user.userCategory === "1" && !user.otpUsed) {
+      requiresVerification = true;
+      verificationType = "OTP";
+    }
+    if (user.userCategory === "2" && !user.otpUsed) {
+      requiresVerification = true;
+      verificationType = "OTP";
+    }
 
     // ✅ Generate Token
     const token = jwt.sign(
@@ -250,7 +249,7 @@ export const userLogin = async (req, res) => {
         district: user.district,
         area: user.area,
         country: user.country,
-        //userCategory: user.userCategory,
+        userCategory: user.userCategory,
         aadhaarCardImage1: user.aadhaarCardImage1,
         aadhaarCardImage2: user.aadhaarCardImage2,
         profileImage: user.profileImage,
@@ -352,7 +351,7 @@ export const updateUser = async (req, res) => {
       });
     }
     user.updateCount = (user.updateCount || 0) + 1;
-    
+
     await user.save();
 
     return res.status(200).json({
@@ -500,34 +499,6 @@ export const verifyPin = async (req, res) => {
   }
 };
 
-
-export const deleteUser = async (req, res) => {
-  try {
-    const userId = parseInt(req.params.userId, 10);
-
-    if (!userId) {
-      return res.status(400).json({ message: "Invalid user ID" });
-    }
-
-    console.log(userId);
-    // Find the user by userId
-    const user = await UserModel.findOne({ userId });
-
-    if (!user) {
-      // If user not found, return 404 status with message
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // Delete the user from the database
-    await UserModel.deleteOne({ userId });
-
-    // Return success message
-    return res.status(200).json({ message: "User deleted successfully" });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Something went wrong" });
-  }
-};
 export const verifyOtp = async (req, res) => {
   const { userId, otp } = req.body;
 
@@ -547,20 +518,18 @@ export const verifyOtp = async (req, res) => {
 
     // Check if OTP exists and is not expired
     const currentTime = new Date().getTime();
+    if (user.otpExpire < currentTime) {
+      return res.status(400).json({ message: "OTP has expired" });
+    }
+
     if (user.otp !== otp) {
       return res.status(400).json({ message: "Invalid OTP" });
     }
 
-    if (user.otpUsed) {
-      return res.status(400).json({ message: "OTP has already been used" });
-    }
-
-    if (currentTime > user.otpExpiry) {
-      return res.status(400).json({ message: "OTP has expired" });
-    }
-
     // OTP is valid and not used yet
     user.isOtpVerified = true; // Mark OTP as used
+    user.otp = null; // Clear OTP
+    user.otpExpire = null; // Clear OTP expiration time
     await user.save();
 
     // Send the user details in the response

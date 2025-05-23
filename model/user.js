@@ -39,16 +39,20 @@ const UserSchema = new mongoose.Schema(
     aadhaarCardImage2: { type: [String] },
     aadharNumber: { type: [String] },
     role: { type: String, enum: ["admin", "user"] },
-    userCategory: { type: String, enum: ["A", "B"] },
+    userCategory: { type: String, enum: ["A", "B","1","2"] },
     isVerified: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
     isBlocked: { type: Boolean, default: false },
     isPinVerified: { type: Boolean, default: false },
     isOtpVerified: { type: Boolean, default: false },
     oneTimePin: { type: String },
+    isActive: { type: Boolean, default: true },
     otp: { type: String },
-    otpExpire: { type: Date },
-    
+    otpExpire: {
+      type: Date,
+      default: () => new Date(Date.now() + 1.5 * 60 * 1000),
+    },
+
     updateCount: {
       type: Number,
       default: 0,

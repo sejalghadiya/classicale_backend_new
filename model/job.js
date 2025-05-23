@@ -5,7 +5,6 @@ const JobSchema = new mongoose.Schema(
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
     service_job: {
       type: String,
-      enum: ["Service", "Job"],
     },
     salaryPeriod: { type: [String] },
     positionType: { type: [String] },

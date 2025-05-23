@@ -3,7 +3,6 @@ import {
   userSignUp,
   updateUser,
   userLogin,
-  deleteUser,
   verifyOtp,
   createNewPassword,
   checkBothUser,
@@ -17,7 +16,6 @@ import {
   repostProducts,
 } from "../controller/user.js";
 import { upload } from "../upload.js";
-import authenticateUser from "../auth/middle.js";
 const router = express.Router();
 
 router.post("/createNewPassword", createNewPassword);
@@ -48,7 +46,6 @@ router.put(
   updateUser
 );
 router.get("/getUserByID",getUserByID);
-router.delete("/deleteUser/:userId", authenticateUser, deleteUser);
 
 router.post("/checkBoth", checkBothUser);
 

@@ -6,6 +6,7 @@ const ReportProductSchema = new mongoose.Schema({
     desctiption: { type: String },
     image: { type: String },
     modelName: { type: String },
+    isActive: {type: Boolean, default: true},
 
 },
     {
