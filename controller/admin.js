@@ -407,7 +407,6 @@ export const productActiveOrInactive = async (req, res) => {
 };
 
 //delete product
-
 export const deleteProduct = async (req, res) => {
   try {
     const { productId, productType } = req.query;
@@ -428,18 +427,23 @@ export const deleteProduct = async (req, res) => {
       return res.status(400).json({ message: "Invalid product type model" });
     }
 
-    // ✅ Permanently delete product from database
-    const deletedProduct = await Model.findByIdAndDelete(productId);
+    // ✅ Soft delete: set isDeleted to true
+    const updatedProduct = await Model.findByIdAndUpdate(
+      productId,
+      { isDeleted: true },
+      { new: true }
+    );
 
-    if (!deletedProduct) {
+    if (!updatedProduct) {
       return res
         .status(404)
         .json({ message: "Product not found or already deleted" });
     }
 
-    return res
-      .status(200)
-      .json({ message: "Product permanently deleted from database" });
+    return res.status(200).json({
+      message: "Product soft deleted successfully",
+      product: updatedProduct,
+    });
   } catch (error) {
     console.error("❌ Delete Error:", error.message);
     return res
@@ -447,7 +451,7 @@ export const deleteProduct = async (req, res) => {
       .json({ message: "Server error", error: error.message });
   }
 };
-
+``;
 //user category get
 
 export const getUserCategory = async (req, res) => {
@@ -534,69 +538,122 @@ export const deleteUser = async (req, res) => {
 
 //get all user
 
-export const getAllUser = async (req, res) => {
-  try {
-    const categoryACount = await UserModel.countDocuments({
-      userCategory: { $regex: "A", $options: "i" },
-    });
+// export const getAllUser = async (req, res) => {
+//   try {
+//     const getCategoryStats = async (regex) => {
+//       const baseQuery = { userCategory: { $regex: regex, $options: "i" } };
 
-    const categoryBCount = await UserModel.countDocuments({
-      userCategory: { $regex: "B", $options: "i" },
-    });
+//       const total = await UserModel.countDocuments(baseQuery);
 
-    const category1Count = await UserModel.countDocuments({
-      userCategory: { $regex: "1", $options: "i" },
-    });
-    const category2Count = await UserModel.countDocuments({
-      userCategory: { $regex: "2", $options: "i" },
-    });
+//       const verified = await UserModel.countDocuments({
+//         ...baseQuery,
+//         isPinVerified: true,
+//         isOtpVerified: true,
+//       });
 
-    const categoryAUnverifiedPinCount = await UserModel.countDocuments({
-      userCategory: { $regex: "A", $options: "i" },
-      isPinVerified: false,
-    });
+//       // Strictly pending = both false
+//       const pending = await UserModel.countDocuments({
+//         ...baseQuery,
+//         $or: [
+//           { isPinVerified: false, isOtpVerified: true },
+//           { isPinVerified: true, isOtpVerified: false },
+//         ],
+//       });
 
-    const categoryBOtpUnverifiedCount = await UserModel.countDocuments({
-      userCategory: { $regex: "B", $options: "i" },
-      isOtpVerified: false,
-    });
+//       const deleted = await UserModel.countDocuments({
+//         ...baseQuery,
+//         isDeleted: true,
+//       });
 
-    const category1UnverifiedPinCount = await UserModel.countDocuments({
-      userCategory: { $regex: "1", $options: "i" },
-      isOtpVerified: false,
-    });
-    const category2UnverifiedPinCount = await UserModel.countDocuments({
-      userCategory: { $regex: "2", $options: "i" },
-      isOtpVerified: false,
-    });
+//       const disable = await UserModel.countDocuments({
+//         ...baseQuery,
+//         isActive: false,
+//       });
 
-    const totalUsers = await UserModel.countDocuments();
+//       return { total, verified, pending, deleted, disable };
+//     };
 
-    return res.status(200).json({
-      success: true,
-      totalUsers,
-      categoryCounts: {
-        "Category A": categoryACount,
-        "Category B": categoryBCount,
-        "Category 1": category1Count,
-        "Category 2": category2Count,
-      },
-      unverifiedCounts: {
-        "Category A (isPinVerified: false)": categoryAUnverifiedPinCount,
-        "Category B (isOtpVerified: false)": categoryBOtpUnverifiedCount,
-        "Category 1 (isOtpVerified: false)": category1UnverifiedPinCount,
-        "Category 2 (isOtpVerified: false)": category2UnverifiedPinCount,
-      },
-    });
-  } catch (error) {
-    console.error("Error in getAllUser:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
-  }
-};
+//     const categoryAStats = await getCategoryStats("A");
+//     const categoryBStats = await getCategoryStats("B");
+//     const category1Stats = await getCategoryStats("1");
+//     const category2Stats = await getCategoryStats("2");
+
+//     // Total stats
+//     const totalUsers = await UserModel.countDocuments();
+
+//     const totalVerifiedUsers = await UserModel.countDocuments({
+//       isPinVerified: true,
+//       isOtpVerified: true,
+//     });
+
+//     // Strictly pending: either pin or otp not verified (but not both true)
+//     const totalPendingAccessUsers = await UserModel.countDocuments({
+//       $or: [
+//         { isPinVerified: false, isOtpVerified: true },
+//         { isPinVerified: true, isOtpVerified: false },
+//       ],
+//     });
+
+//     const totalDeletedUsers = await UserModel.countDocuments({
+//       isDeleted: true,
+//     });
+
+//     const totalDisabledUsers = await UserModel.countDocuments({
+//       isActive: false,
+//     });
+
+//     // Unverified counts (partial)
+//     const categoryAUnverifiedPinCount = await UserModel.countDocuments({
+//       userCategory: { $regex: "A", $options: "i" },
+//       isPinVerified: false,
+//     });
+
+//     const categoryBOtpUnverifiedCount = await UserModel.countDocuments({
+//       userCategory: { $regex: "B", $options: "i" },
+//       isOtpVerified: false,
+//     });
+
+//     const category1UnverifiedPinCount = await UserModel.countDocuments({
+//       userCategory: { $regex: "1", $options: "i" },
+//       isOtpVerified: false,
+//     });
+
+//     const category2UnverifiedPinCount = await UserModel.countDocuments({
+//       userCategory: { $regex: "2", $options: "i" },
+//       isOtpVerified: false,
+//     });
+
+//     return res.status(200).json({
+//       success: true,
+//       totalUsers,
+//       verifiedUsers: totalVerifiedUsers,
+//       pendingAccessUsers: totalPendingAccessUsers, // Correct strict pending count here
+//       deletedUsers: totalDeletedUsers,
+//       disabledUsers: totalDisabledUsers,
+
+//       categoryStats: {
+//         "Category A": categoryAStats,
+//         "Category B": categoryBStats,
+//         "Category 1": category1Stats,
+//         "Category 2": category2Stats,
+//       },
+
+//       unverifiedCounts: {
+//         "Category A (isPinVerified: false)": categoryAUnverifiedPinCount,
+//         "Category B (isOtpVerified: false)": categoryBOtpUnverifiedCount,
+//         "Category 1 (isOtpVerified: false)": category1UnverifiedPinCount,
+//         "Category 2 (isOtpVerified: false)": category2UnverifiedPinCount,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Error in getAllUser:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Server Error",
+//       error: error.message,
+//     });
+//   }
+// };
 
 export const getAccesCode = async (req, res) => {
   try {
@@ -619,14 +676,14 @@ export const getAccesCode = async (req, res) => {
 
 export const userAccess = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, userCategory } = req.body;
     console.log("Email:", email);
 
     if (!email) {
       return res.status(400).json({ message: "Email is required" });
     }
 
-    const user = await UserModel.findOne({ email });
+    const user = await UserModel.findOne({ email, userCategory });
     console.log("User:", user);
 
     if (!user) {
@@ -667,7 +724,7 @@ export const userAccess = async (req, res) => {
 
 export const sendPinAccess = async (req, res) => {
   try {
-    const { code, email } = req.body;
+    const { code, email, userCategory } = req.body;
     console.log("Code:", code);
 
     if (!code || !email) {
@@ -682,7 +739,7 @@ export const sendPinAccess = async (req, res) => {
     }
     console.log("New Pin:", newPin);
     // Find the user
-    const user = await UserModel.findOne({ email });
+    const user = await UserModel.findOne({ email, userCategory });
     console.log("User:", user);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -762,7 +819,7 @@ const generateOTP = () => {
 
 export const sendOtpToCategoryB = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, userCategory } = req.body;
 
     if (!email) {
       return res.status(400).json({ message: "Email is required." });
@@ -771,6 +828,7 @@ export const sendOtpToCategoryB = async (req, res) => {
     // Find user by email, must be category B and not yet OTP verified
     const user = await UserModel.findOne({
       email,
+      userCategory,
     });
 
     if (!user) {
@@ -817,7 +875,7 @@ export const userActiveOrInactive = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Toggle isActive status
+    // Toggle isBlocked status
     user.isActive = !user.isActive;
     await user.save();
 
@@ -966,6 +1024,248 @@ export const getReportCount = async (req, res) => {
     console.error("Error fetching reported products:", error);
     return res.status(500).json({
       message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+//get all product by category
+export const getAllProductByCategory = async (req, res) => {
+  try {
+    const { category } = req.query;
+
+    if (!category) {
+      return res.status(400).json({ message: "Category is required" });
+    }
+
+    const allProducts = {};
+    const categoryList = ["A", "B", "C", "D", "E"];
+    const categoryCounts = Object.fromEntries(categoryList.map((c) => [c, 0]));
+    let totalProductCount = 0;
+
+    for (const [key, Model] of Object.entries(productModels)) {
+      const modelSchemaPaths = Model.schema.paths;
+
+      let query = Model.find({ categories: category, isDeleted: false })
+        .populate({ path: "productType" })
+        .populate({
+          path: "subProductType",
+          select: "-modelName -productType",
+        });
+
+      if ("userId" in modelSchemaPaths) {
+        query = query.populate({
+          path: "userId",
+          select:
+            "fName lName mName email phone profileImage state district country area",
+        });
+      }
+
+      const results = await query;
+
+      results.forEach((product) => {
+        product._doc.modelName = key;
+      });
+
+      if (results.length > 0) {
+        allProducts[key] = {
+          count: results.length,
+          items: results,
+        };
+
+        totalProductCount += results.length;
+
+        results.forEach((product) => {
+          const productCategories = Array.isArray(product.categories)
+            ? product.categories
+            : [product.categories];
+
+          productCategories.forEach((cat) => {
+            const catUpper = cat?.toUpperCase();
+            if (categoryList.includes(catUpper)) {
+              categoryCounts[catUpper]++;
+            }
+          });
+        });
+      }
+    }
+
+    return res.status(200).json({
+      message: "Filtered products fetched successfully",
+      totalProductCount,
+      categoryCounts, // A to E counts
+      products: allProducts,
+    });
+  } catch (error) {
+    console.error("❌ Server Error:", error.message);
+    res.status(500).json({ message: "Server error!", error: error.message });
+  }
+};
+
+//new dashbord api
+
+export const getAllUser = async (req, res) => {
+  try {
+    const getCategoryStats = async (regex) => {
+      const baseQuery = { userCategory: { $regex: regex, $options: "i" } };
+
+      const total = await UserModel.countDocuments(baseQuery);
+
+      const verified = await UserModel.countDocuments({
+        ...baseQuery,
+        isPinVerified: true,
+        isOtpVerified: true,
+      });
+
+      const pending = await UserModel.countDocuments({
+        ...baseQuery,
+        $or: [
+          { isPinVerified: false, isOtpVerified: true },
+          { isPinVerified: true, isOtpVerified: false },
+        ],
+      });
+
+      const deleted = await UserModel.countDocuments({
+        ...baseQuery,
+        isDeleted: true,
+      });
+
+      const disable = await UserModel.countDocuments({
+        ...baseQuery,
+        isActive: false,
+      });
+
+      return { total, verified, pending, deleted, disable };
+    };
+
+    // --- USER CATEGORY STATS ---
+    const categoryAStats = await getCategoryStats("A");
+    const categoryBStats = await getCategoryStats("B");
+    const category1Stats = await getCategoryStats("1");
+    const category2Stats = await getCategoryStats("2");
+
+    const totalUsers = await UserModel.countDocuments();
+    const totalVerifiedUsers = await UserModel.countDocuments({
+      isPinVerified: true,
+      isOtpVerified: true,
+    });
+    const totalPendingAccessUsers = await UserModel.countDocuments({
+      $or: [
+        { isPinVerified: false, isOtpVerified: true },
+        { isPinVerified: true, isOtpVerified: false },
+      ],
+    });
+    const totalDeletedUsers = await UserModel.countDocuments({
+      isDeleted: true,
+    });
+    const totalDisabledUsers = await UserModel.countDocuments({
+      isActive: false,
+    });
+
+    const categoryAUnverifiedPinCount = await UserModel.countDocuments({
+      userCategory: { $regex: "A", $options: "i" },
+      isPinVerified: false,
+    });
+    const categoryBOtpUnverifiedCount = await UserModel.countDocuments({
+      userCategory: { $regex: "B", $options: "i" },
+      isOtpVerified: false,
+    });
+    const category1UnverifiedPinCount = await UserModel.countDocuments({
+      userCategory: { $regex: "1", $options: "i" },
+      isOtpVerified: false,
+    });
+    const category2UnverifiedPinCount = await UserModel.countDocuments({
+      userCategory: { $regex: "2", $options: "i" },
+      isOtpVerified: false,
+    });
+
+    // --- PRODUCT CATEGORY COUNT STATS (ONLY A–E total count) ---
+    const categoryList = ["A", "B", "C", "D", "E"];
+    const categoryCounts = Object.fromEntries(categoryList.map((c) => [c, 0]));
+    let totalProductCount = 0;
+
+    for (const [key, Model] of Object.entries(productModels)) {
+      const products = await Model.find({ isDeleted: false }); // filter deleted if needed
+
+      totalProductCount += products.length;
+
+      products.forEach((product) => {
+        const productCategories = Array.isArray(product.categories)
+          ? product.categories
+          : [product.categories];
+
+        productCategories.forEach((cat) => {
+          const catUpper = cat?.toUpperCase();
+          if (categoryList.includes(catUpper)) {
+            categoryCounts[catUpper]++;
+          }
+        });
+      });
+    }
+
+    // --- REPORT COUNT ---
+    const reportedProducts = await ReportProductModel.find()
+      .populate("userId")
+      .populate("productId");
+
+    // let validReportCount = 0;
+
+    // for (const report of reportedProducts) {
+    //   const { modelName, productId } = report;
+
+    //   const Model = productModels[modelName];
+    //   if (!Model || !productId?._id) continue;
+
+    //   const productExists = await Model.findById(productId._id);
+    //   if (productExists) {
+    //     validReportCount++;
+    //   }
+    // }
+    const validReportCount = await ReportProductModel.countDocuments({});
+
+    const totalResolveRepoerts = await ReportProductModel.countDocuments({
+      isActive: false,
+    });
+
+    // --- FINAL RESPONSE ---
+    return res.status(200).json({
+      success: true,
+      totalUsers,
+      verifiedUsers: totalVerifiedUsers,
+      pendingAccessUsers: totalPendingAccessUsers,
+      deletedUsers: totalDeletedUsers,
+      disabledUsers: totalDisabledUsers,
+
+      categoryStats: {
+        Category_A: categoryAStats,
+        Category_B: categoryBStats,
+        Category_1: category1Stats,
+        Category_2: category2Stats,
+      },
+
+      // unverifiedCounts: {
+      //   "Category A (isPinVerified: false)": categoryAUnverifiedPinCount,
+      //   "Category B (isOtpVerified: false)": categoryBOtpUnverifiedCount,
+      //   "Category 1 (isOtpVerified: false)": category1UnverifiedPinCount,
+      //   "Category 2 (isOtpVerified: false)": category2UnverifiedPinCount,
+      // },
+
+      productStats: {
+        totalProductCount,
+        categoryCounts, // A, B, C, D, E: total count each
+      },
+
+      reportStats: {
+        totalReportedProducts: validReportCount,
+        totalResolveRepoerts,
+        totalPendingReports: validReportCount - totalResolveRepoerts,
+      },
+    });
+  } catch (error) {
+    console.error("Error in getAllUser:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
       error: error.message,
     });
   }

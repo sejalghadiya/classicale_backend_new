@@ -1,6 +1,6 @@
 import { UserModel } from "../model/user.js";
 import dotenv from "dotenv";
-import mongoose from "mongoose";
+import mongoose, { Model } from "mongoose";
 import nodemailer from "nodemailer";
 import { SubProductTypeModel } from "../model/sub_product_type.js";
 import { ProductTypeModel } from "../model/product_type.js";
@@ -19,6 +19,8 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { saveBase64Image } from "../utils/image_store.js";
+import { all } from "axios";
+import { log } from "console";
 dotenv.config();
 // Fix __dirname for ES module
 const __filename = fileURLToPath(import.meta.url);
@@ -1246,121 +1248,310 @@ const searchableFields = [
   "address1",
   "facing",
   "area",
+  "productType",
+  "subProductType",
 ];
 
+// export const searchProduct = async (req, res) => {
+//   try {
+//     const { keyword = "", categories, productType, subProductType } = req.query;
+//     const regex = new RegExp(keyword, "i");
+
+//     const searchableFields = [
+//       "adTitle",
+//       "description",
+//       "price",
+//       "brand",
+//       "model",
+//       "bhk",
+//       "address1",
+//       "facing",
+//       "area",
+//       "productType",
+//       "subProductType",
+//     ];
+
+//     const queryConditions = {
+//       isActive: true,
+//       isDeleted: false,
+//     };
+
+//     if (categories) queryConditions.categories = categories;
+//     if (productType) queryConditions.productType = productType;
+//     if (subProductType) queryConditions.subProductType = subProductType;
+
+//     const populateOptions = [
+//       { path: "productType", select: "_id name modelName" },
+//       { path: "subProductType", select: "_id name" },
+//       {
+//         path: "userId",
+//         select:
+//           "fName lName mName email phone state district country area profileImage _id",
+//       },
+//     ];
+
+//     const results = [];
+
+//     for (const [modelName, Model] of Object.entries(productModels)) {
+//       const orConditions = searchableFields.map((field) => ({
+//         [field]: regex,
+//       }));
+//       const modelResults = await Model.find({
+//         ...queryConditions,
+//         $or: orConditions,
+//       })
+//         .populate(populateOptions)
+//         .lean();
+
+//       results.push(...modelResults.map((p) => ({ ...p, type: modelName })));
+//     }
+
+//     if (!results.length) {
+//       return res
+//         .status(404)
+//         .json({ message: "No products found", count: 0, data: [] });
+//     }
+
+//     res.status(200).json({
+//       message: "Search results",
+//       count: results.length,
+//       data: results,
+//     });
+//   } catch (error) {
+//     console.error("❌ Error in searchProduct:", error);
+//     res.status(500).json({ message: "Server error", error: error.message });
+//   }
+// };
 export const searchProduct = async (req, res) => {
-  const { query, categories } = req.query;
+  try {
+    const { keyword = "", categories, productType, subProductType } = req.query;
+    const regex = new RegExp(keyword, "i");
 
-  console.log("search query", query);
+    // Step 1: Match productType/subProductType name with keyword
+    const matchingProductTypes = await ProductTypeModel.find({
+      name: regex,
+    }).select("_id");
+    const matchingSubProductTypes = await SubProductTypeModel.find({
+      name: regex,
+    }).select("_id");
 
-  const regex = query ? new RegExp(query, "i") : null;
+    const queryConditions = {
+      isActive: true,
+      isDeleted: false,
+    };
 
-  console.log("regex", regex);
+    if (categories) queryConditions.categories = categories;
+    if (productType) queryConditions.productType = productType;
+    if (subProductType) queryConditions.subProductType = subProductType;
 
-  // Detect matching product types (like "car", "bike") from query
-  const matchedProductTypes = Object.keys(productModels).filter((key) =>
-    regex?.test(key)
-  );
+    const populateOptions = [
+      { path: "productType", select: "_id name modelName" },
+      { path: "subProductType", select: "_id name" },
+      {
+        path: "userId",
+        select:
+          "fName lName mName email phone state district country area profileImage _id",
+      },
+    ];
 
-  console.log("matchedProductTypes", matchedProductTypes);
-  if (matchedProductTypes.length > 0) {
-    console.log("matchedProductTypes", matchedProductTypes.length);
-
-    // If a matching product type was found, then sent all products of that type
     const results = [];
-    for (const modelName of matchedProductTypes) {
-      const Model = productModels[modelName];
-      console.log("modelName", Model);
+
+    for (const [modelName, Model] of Object.entries(productModels)) {
+      // Basic text fields
+      const orConditions = [
+        { adTitle: regex },
+        { description: regex },
+        { price: regex },
+        { brand: regex },
+        { model: regex },
+        { bhk: regex },
+        { address1: regex },
+        { facing: regex },
+        { area: regex },
+      ];
+
+      // Match IDs of types whose name matches keyword
+      if (matchingProductTypes.length > 0) {
+        orConditions.push({
+          productType: { $in: matchingProductTypes.map((p) => p._id) },
+        });
+      }
+
+      if (matchingSubProductTypes.length > 0) {
+        orConditions.push({
+          subProductType: { $in: matchingSubProductTypes.map((s) => s._id) },
+        });
+      }
 
       const modelResults = await Model.find({
-        isActive: true,
-        isDeleted: false,
+        ...queryConditions,
+        $or: orConditions,
       })
-        .populate({
-          path: "productType",
-          select: "_id name modelName",
-        })
-        .populate({
-          path: "subProductType",
-          select: "_id name",
-        })
-        .populate({
-          path: "userId",
-          select:
-            "fName lName mName email phone state district country area profileImage _id",
-        })
-        .lean();
-      results.push(...modelResults.map((r) => ({ ...r, type: modelName })));
-    }
-    console.log("results", results);
-    if (results.length === 0) {
-      return res.status(404).json({ message: "No products found" });
-    }
-
-    return res.json({
-      message: "Search results",
-      count: results.length,
-      data: results,
-    });
-  }
-
-  // Construct base query
-  const baseQuery = {
-    isActive: true,
-    isDeleted: false,
-  };
-
-  if (regex) {
-    baseQuery.$or = searchableFields.map((field) => ({
-      [field]: regex,
-    }));
-  }
-
-  // If a matching product type was found in the query, include it
-  const modelsToSearch = categories
-    ? [categories]
-    : matchedProductTypes.length > 0
-    ? matchedProductTypes
-    : Object.keys(productModels);
-
-  try {
-    const results = [];
-
-    for (const modelName of modelsToSearch) {
-      const Model = productModels[modelName];
-
-      const modelResults = await Model.find(baseQuery)
-        .populate({
-          path: "productType",
-          select: "_id name modelName",
-        })
-        .populate({
-          path: "subProductType",
-          select: "_id name",
-        })
-        .populate({
-          path: "userId",
-          select:
-            "fName lName mName email phone state district country area profileImage _id",
-        })
+        .populate(populateOptions)
         .lean();
 
-      results.push(...modelResults.map((r) => ({ ...r, type: modelName })));
+      results.push(...modelResults.map((p) => ({ ...p, type: modelName })));
     }
 
-    res.json({
+    if (!results.length) {
+      return res
+        .status(404)
+        .json({ message: "No products found", count: 0, data: [] });
+    }
+
+    res.status(200).json({
       message: "Search results",
       count: results.length,
       data: results,
     });
   } catch (error) {
-    console.error("Error in searchProduct:", error);
-    res.status(500).json({
-      message: "Something went wrong",
-      error: error.message,
-    });
+    console.error("❌ Error in searchProduct:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+export const filterProduct = async (req, res) => {
+  try {
+    const { productType, subProductType, maxPrice, minPrice, categories } =
+      req.query;
+
+    if (subProductType && !productType) {
+      return res
+        .status(400)
+        .json({
+          message: "productType is required when subProductType is provided",
+        });
+    }
+
+    const filter = { isActive: true, isDeleted: false };
+
+    let modelName = null;
+
+    if (productType) {
+      const pt = await ProductTypeModel.findById(productType);
+      if (!pt) return res.status(400).json({ message: "Invalid productType" });
+      filter.productType = pt._id;
+      modelName = pt.modelName;
+    }
+
+    if (subProductType) {
+      const spt = await SubProductTypeModel.findById(subProductType);
+      if (!spt)
+        return res.status(400).json({ message: "Invalid subProductType" });
+      filter.subProductType = spt._id;
+    }
+
+    if (categories) {
+      filter.categories = { $in: categories };
+    }
+
+    const populateOptions = [
+      { path: "productType", select: "_id name modelName" },
+      { path: "subProductType", select: "_id name" },
+      {
+        path: "userId",
+        select:
+          "fName lName mName email phone state district country area profileImage _id",
+      },
+    ];
+
+    let allProducts = [];
+
+    const fetchFromModel = async (Model, name) => {
+      const items = await Model.find(filter).populate(populateOptions).lean();
+      return items.map((i) => ({ ...i, type: name }));
+    };
+
+    if (modelName && productModels[modelName]) {
+      allProducts = await fetchFromModel(productModels[modelName], modelName);
+    } else {
+      const results = await Promise.all(
+        Object.entries(productModels).map(([name, Model]) =>
+          fetchFromModel(Model, name)
+        )
+      );
+      allProducts = results.flat();
+    }
+
+    if (minPrice || maxPrice) {
+      allProducts = allProducts.filter((p) => {
+        const prices = p.price;
+        if (!Array.isArray(prices) || !prices.length) return true;
+
+        const last = parseFloat(prices[prices.length - 1]);
+        return (
+          (!minPrice || last >= parseFloat(minPrice)) &&
+          (!maxPrice || last <= parseFloat(maxPrice))
+        );
+      });
+    }
+
+    res.status(200).json({
+      message: allProducts.length
+        ? "Products fetched successfully"
+        : "No products found",
+      count: allProducts.length,
+      data: allProducts,
+    });
+  } catch (error) {
+    console.error("❌ Error in filterProduct:", error.message);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// export const searchProduct = async (req, res) => {
+//   try {
+//     const { categories } = req.query;
+//     const results = [];
+
+//     for (const modelName in productModels) {
+//       const Model = productModels[modelName];
+//       if (!Model) {
+//         return res.status(400).json({ message: "Invalid Model Name" });
+//       }
+
+//       console.log("modelName", Model);
+
+//       const modelResults = await Model.find({
+//         isActive: true,
+//         isDeleted: false,
+//         categories: categories,
+//       })
+//         .populate({
+//           path: "productType",
+//           select: "_id name modelName",
+//         })
+//         .populate({
+//           path: "subProductType",
+//           select: "_id name",
+//         })
+//         .populate({
+//           path: "userId",
+//           select:
+//             "fName lName mName email phone state district country area profileImage _id",
+//         })
+//         .lean();
+//       results.push(...modelResults.map((r) => ({ ...r, type: modelName })));
+//     }
+
+//     console.log("results", results);
+//     if (results.length === 0) {
+//       return res.status(404).json({ message: "No products found" });
+//     }
+
+//     return res.json({
+//       message: "Search results",
+//       count: results.length,
+//       data: results,
+//     });
+//   } catch (error) {
+//     console.error("Error in searchProduct:", error);
+//     res.status(500).json({
+//       message: "Something went wrong",
+//       error: error.message,
+//     });
+//   }
+// };
 
 // export const searchProduct = async (req, res) => {
 //   const { query, categories } = req.query;
@@ -1518,5 +1709,455 @@ export const toggleProductVisibility = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Server error", error: error.message });
+  }
+};
+
+export const getProductType = async (req, res) => {
+  try {
+    const productTypes = await ProductTypeModel.find();
+    const typeCountsMap = {};
+
+    // Iterate over each product model and count based on productType
+    for (const Model of Object.values(productModels)) {
+      const items = await Model.aggregate([
+        {
+          $match: {
+            isDeleted: false,
+          },
+        },
+        {
+          $group: {
+            _id: "$productType",
+            count: { $sum: 1 },
+          },
+        },
+      ]);
+
+      items.forEach(({ _id, count }) => {
+        if (_id) {
+          if (!typeCountsMap[_id]) {
+            typeCountsMap[_id] = 0;
+          }
+          typeCountsMap[_id] += count;
+        }
+      });
+    }
+
+    // Merge count with product types
+    const productTypesWithCount = productTypes.map((productType) => ({
+      ...productType._doc,
+      count: typeCountsMap[productType._id?.toString()] || 0,
+    }));
+
+    return res.status(200).json({
+      message: "Product types fetched successfully",
+      data: productTypesWithCount,
+    });
+  } catch (error) {
+    console.error("Error in getProductType:", error);
+    res.status(500).json({ message: "Error fetching product types", error });
+  }
+};
+
+export const getSubProductType = async (req, res) => {
+  try {
+    const { productSubTypeId } = req.params;
+    console.log("productSubTypeId", productSubTypeId);
+    if (!productSubTypeId) {
+      return res.status(400).json({ message: "Product Type ID is required" });
+    }
+
+    const subProductTypes = await SubProductTypeModel.find({
+      productType: productSubTypeId,
+    });
+    return res.status(200).json({
+      message: "Sub Product Types fetched successfully",
+      data: subProductTypes,
+    });
+  } catch (error) {
+    console.log("Error in getSubProductType:", error);
+    res
+      .status(500)
+      .json({ message: "Error fetching sub product types", error });
+  }
+};
+
+// //filter product api
+// export const filterProduct = async (req, res) => {
+//   try {
+//     const { productType, subProductType, maxPrice, minPrice } = req.query;
+
+//     let _productType;
+//     let _subProductType;
+//     let modelName;
+//     let allProducts = [];
+//     if (productType) {
+//       _productType = await ProductTypeModel.findById(productType);
+//       if (_productType) {
+//         modelName = _productType.modelName;
+//       }
+//       console.log("_productType", _productType);
+//     }
+//     if (subProductType) {
+//       _subProductType = await SubProductTypeModel.findById(subProductType);
+//       console.log("_subProductType", _subProductType);
+//     }
+
+//     if (modelName) {
+//       const Model = productModels[modelName];
+//       if (!Model) {
+//         return res.status(400).json({ message: "Invalid Model Name" });
+//       }
+//       console.log("Model", Model);
+//       let product;
+//       if (_subProductType) {
+//         console.log("Finding products by product and sub product type");
+//         product = await Model.find({
+//           productType: _productType?._id,
+//           subProductType: _subProductType?._id,
+//           isActive: true,
+//           isDeleted: false,
+//         });
+//       } else {
+//         console.log("Finding products by product type only");
+
+//         product = await Model.find({
+//           productType: _productType?._id,
+//           isActive: true,
+//           isDeleted: false,
+//         });
+//       }
+//       console.log("product", product);
+
+//       allProducts.push(...product);
+//     } else {
+//       // find all products across all models
+//       console.log("Finding products across all models");
+
+//       for (const [key, Model] of Object.entries(productModels)) {
+//         const products = await Model.find({
+//           productType: _productType?._id,
+//           subProductType: _subProductType?._id,
+//           isActive: true,
+//           isDeleted: false,
+//         });
+//         allProducts.push(...products);
+//       }
+//     }
+
+//     if (maxPrice || minPrice) {
+//       allProducts = allProducts.filter((product) => {
+//         let price = parseFloat(product.price);
+//         return (
+//           (!maxPrice || price <= parseFloat(maxPrice)) &&
+//           (!minPrice || price >= parseFloat(minPrice))
+//         );
+//       });
+//     }
+//     if (allProducts.length === 0) {
+//       return res.status(404).json({ message: "No products found" });
+//     }
+//     return res.status(200).json({
+//       message: "Products fetched successfully",
+//       products: allProducts,
+//     });
+//   } catch (error) {
+//     console.log("❌ Error in filterProduct:", error.message);
+//     return res
+//       .status(500)
+//       .json({ message: "Server error", error: error.message });
+//   }
+// };
+
+// export const filterProduct = async (req, res) => {
+//   try {
+//     const { productType, subProductType, maxPrice, minPrice } = req.query;
+
+//     if (subProductType && !productType) {
+//       return res.status(400).json({
+//         message: "productType is required when subProductType is provided",
+//       });
+//     }
+
+//     const filter = {
+//       isActive: true,
+//       isDeleted: false,
+//     };
+
+//     let modelName;
+
+//     if (productType) {
+//       const _productType = await ProductTypeModel.findById(productType);
+//       if (!_productType)
+//         return res.status(400).json({ message: "Invalid productType" });
+
+//       modelName = _productType.modelName;
+//       filter.productType = _productType._id;
+//     }
+
+//     if (subProductType) {
+//       const _subProductType = await SubProductTypeModel.findById(
+//         subProductType
+//       );
+//       if (!_subProductType)
+//         return res.status(400).json({ message: "Invalid subProductType" });
+
+//       filter.subProductType = _subProductType._id;
+//     }
+
+//     let allProducts = [];
+
+//     const populateOptions = [
+//       {
+//         path: "productType",
+//         select: "_id name modelName",
+//       },
+//       {
+//         path: "subProductType",
+//         select: "_id name",
+//       },
+//       {
+//         path: "userId",
+//         select:
+//           "fName lName mName email phone state district country area profileImage _id",
+//       },
+//     ];
+
+//     if (modelName) {
+//       const Model = productModels[modelName];
+//       if (!Model)
+//         return res.status(400).json({ message: "Invalid Model Name" });
+
+//       allProducts = await Model.find(filter).populate(populateOptions);
+//     } else {
+//       const productFetches = Object.values(productModels).map((Model) =>
+//         Model.find(filter).populate(populateOptions)
+//       );
+//       const results = await Promise.all(productFetches);
+//       allProducts = results.flat();
+//     }
+
+//     // Filter based on last price in the array
+//     if (minPrice || maxPrice) {
+//       allProducts = allProducts.filter((product) => {
+//         const prices = product.price;
+//         if (!Array.isArray(prices) || prices.length === 0) return false;
+
+//         const lastPrice = parseFloat(prices[prices.length - 1]);
+//         return (
+//           (!minPrice || lastPrice >= parseFloat(minPrice)) &&
+//           (!maxPrice || lastPrice <= parseFloat(maxPrice))
+//         );
+//       });
+//     }
+
+//     if (allProducts.length === 0) {
+//       return res
+//         .status(201)
+//         .json({ message: "No products found", count: 0, data: [] });
+//     }
+
+//     return res.status(200).json({
+//       message: "Products fetched successfully",
+//       count: allProducts.length,
+//       data: allProducts,
+//     });
+//   } catch (error) {
+//     console.error("❌ Error in filterProduct:", error.message);
+//     return res
+//       .status(500)
+//       .json({ message: "Server error", error: error.message });
+//   }
+// };
+
+//last
+// export const filterProduct = async (req, res) => {
+//   try {
+//     const {
+//       productType,
+//       subProductType,
+//       maxPrice,
+//       minPrice,
+//       categories, // expects a string
+//     } = req.query;
+
+//     // Validate subProductType requires productType
+//     if (subProductType && !productType) {
+//       return res.status(400).json({
+//         message: "productType is required when subProductType is provided",
+//       });
+//     }
+
+//     // Base filter
+//     const filter = {
+//       isActive: true,
+//       isDeleted: false,
+//     };
+
+//     let modelName;
+
+//     // Filter by productType
+//     if (productType) {
+//       const _productType = await ProductTypeModel.findById(productType);
+//       if (!_productType) {
+//         return res.status(400).json({ message: "Invalid productType" });
+//       }
+//       modelName = _productType.modelName;
+//       filter.productType = _productType._id;
+//     }
+
+//     // Filter by subProductType
+//     if (subProductType) {
+//       const _subProductType = await SubProductTypeModel.findById(
+//         subProductType
+//       );
+//       if (!_subProductType) {
+//         return res.status(400).json({ message: "Invalid subProductType" });
+//       }
+//       filter.subProductType = _subProductType._id;
+//     }
+
+//     // Filter by categories (string that should match against array in DB)
+//     if (categories) {
+//       filter.categories = { $in: categories };
+//     }
+
+//     let allProducts = [];
+
+//     const populateOptions = [
+//       {
+//         path: "productType",
+//         select: "_id name modelName",
+//       },
+//       {
+//         path: "subProductType",
+//         select: "_id name",
+//       },
+//       {
+//         path: "userId",
+//         select:
+//           "fName lName mName email phone state district country area profileImage _id",
+//       },
+//     ];
+
+//     // Fetch from specific model if known, else from all models
+//     if (modelName) {
+//       const Model = productModels[modelName];
+//       if (!Model) {
+//         return res.status(400).json({ message: "Invalid Model Name" });
+//       }
+
+//       const products = await Model.find(filter)
+//         .populate(populateOptions)
+//         .lean();
+//       allProducts = products.map((item) => ({ ...item, type: modelName }));
+//     } else {
+//       const productFetches = Object.entries(productModels).map(
+//         async ([name, Model]) => {
+//           const items = await Model.find(filter)
+//             .populate(populateOptions)
+//             .lean();
+//           return items.map((item) => ({ ...item, type: name }));
+//         }
+//       );
+
+//       const results = await Promise.all(productFetches);
+//       allProducts = results.flat();
+//     }
+
+//     // Filter by last price in array
+//     // if (minPrice || maxPrice) {
+//     //   if (minPrice >= 0 && maxPrice > 0 && minPrice < maxPrice) {
+//     //     allProducts = allProducts.filter((product) => {
+//     //       const prices = product.price;
+//     //       if (!Array.isArray(prices) || prices.length === 0) return false;
+
+//     //       const lastPrice = parseFloat(prices[prices.length - 1]);
+//     //       return (
+//     //         (!minPrice || lastPrice >= parseFloat(minPrice)) &&
+//     //         (!maxPrice || lastPrice <= parseFloat(maxPrice))
+//     //       );
+//     //     });
+//     //   }
+//     // }
+
+//     if (minPrice || maxPrice) {
+//       if (minPrice >= 0 && maxPrice > 0 && minPrice < maxPrice) {
+//         allProducts = allProducts.filter((product) => {
+//           const prices = product.price;
+
+//           // ✅ Allow products with no price
+//           if (!Array.isArray(prices) || prices.length === 0) {
+//             return true; // 👈 Important Line
+//           }
+
+//           const lastPrice = parseFloat(prices[prices.length - 1]);
+//           return (
+//             (!minPrice || lastPrice >= parseFloat(minPrice)) &&
+//             (!maxPrice || lastPrice <= parseFloat(maxPrice))
+//           );
+//         });
+//       }
+//     }
+    
+
+//     if (allProducts.length === 0) {
+//       return res
+//         .status(200)
+//         .json({ message: "No products found", count: 0, data: [] });
+//     }
+
+//     return res.status(200).json({
+//       message: "Products fetched successfully",
+//       count: allProducts.length,
+//       data: allProducts,
+//     });
+//   } catch (error) {
+//     console.error("❌ Error in filterProduct:", error.message);
+//     return res
+//       .status(500)
+//       .json({ message: "Server error", error: error.message });
+//   }
+// };
+
+export const getProductTypesWithSubCategories = async (req, res) => {
+  try {
+    const result = await ProductTypeModel.aggregate([
+      {
+        $lookup: {
+          from: "subproducttypes", // should match the actual MongoDB collection name (lowercase & plural)
+          localField: "_id",
+          foreignField: "productType",
+          as: "subCategory",
+        },
+      },
+      {
+        $project: {
+          name: 1,
+          modelName: 1,
+          subCategory: {
+            $map: {
+              input: "$subCategory",
+              as: "sub",
+              in: {
+                _id: "$$sub._id",
+                name: "$$sub.name",
+              },
+            },
+          },
+        },
+      },
+    ]);
+
+    res.json({
+      status: "success",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error fetching product types:", error);
+    res.status(500).json({
+      status: "error",
+      message: "Server Error",
+    });
   }
 };

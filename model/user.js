@@ -34,6 +34,8 @@ const UserSchema = new mongoose.Schema(
     district: { type: [String] },
     country: { type: String },
     area: { type: [String] },
+    houseNo: { type: [String] },
+    pinCode: { type: [String] },
     profileImage: { type: [String] },
     aadhaarCardImage1: { type: [String] },
     aadhaarCardImage2: { type: [String] },

@@ -4,6 +4,7 @@ import {
   deleteProduct,
   deleteUser,
   getAccesCode,
+  getAllProductByCategory,
   getAllUser,
   getProductById,
   getProductType,
@@ -22,6 +23,7 @@ import {
 } from "../controller/admin.js";
 
 import multer from "multer";
+import { getProductByCategory } from "../controller/product.js";
 
 const router = express.Router();
 
@@ -64,5 +66,7 @@ router.get("/report_product", getReportedProducts);
 router.get("/get_report_product_by_id", getReportDetailsById);
 
 router.get("/get_report_count", getReportCount);
+
+router.get("/get_product_by_category", getAllProductByCategory);
 //router.get("/product_active_inactive", productActiveOrInactive);
 export default router;

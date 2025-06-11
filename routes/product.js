@@ -18,6 +18,10 @@ import {
   deleteProduct,
   deleteProductImage,
   toggleProductVisibility,
+  getProductType,
+  getSubProductType,
+  filterProduct,
+  getProductTypesWithSubCategories,
 } from "../controller/product.js";
 import { authenticateUser } from "../auth/middle.js";
 // In routes or other files
@@ -56,4 +60,12 @@ router.get("/get-product-by-userId", getProductsByUser);
 router.delete("/softDelete/:productId/:productType", deleteProduct);
 router.delete("/delete-product-image", deleteProductImage);
 router.post("/product-active-inactive", toggleProductVisibility);
+router.get("/get-product-type", getProductType);
+router.get("/get-product-sub-type-by-id/:productSubTypeId", getSubProductType);
+router.get(
+  "/get-get-product-types-with-sub-categories",
+  getProductTypesWithSubCategories
+);
+
+router.get("/filter", filterProduct);
 export default router;

@@ -11,10 +11,29 @@ import { saveBase64Image } from "../utils/image_store.js";
 import { ReportProductModel } from "../model/reoprt_product.js";
 
 const generateOtp = (firstName, lastName) => {
-  const firstNamePrefix = firstName.slice(0, 2).toUpperCase();
-  const lastNamePrefix = lastName.slice(0, 2).toUpperCase();
-  const randomDigits = Math.floor(10 + Math.random() * 90);
-  return `${firstNamePrefix}${lastNamePrefix}${randomDigits}`;
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  const digits = "0123456789";
+  const allChars = letters + digits;
+
+  let otp = "";
+
+  // Ensure at least one letter and one digit
+  otp += letters[Math.floor(Math.random() * letters.length)];
+  otp += digits[Math.floor(Math.random() * digits.length)];
+
+  // Fill the remaining 4 characters with random alphanumeric characters
+  for (let i = 0; i < 4; i++) {
+    otp += allChars[Math.floor(Math.random() * allChars.length)];
+  }
+
+  // Shuffle the OTP so the first 2 characters aren't always predictable
+  otp = otp
+    .split("")
+    .sort(() => 0.5 - Math.random())
+    .join("");
+
+  console.log("Generated OTP:", otp);
+  return otp;
 };
 
 export const userSignUp = async (req, res) => {
@@ -117,6 +136,12 @@ export const userSignUp = async (req, res) => {
     } else if (userCategory === "B") {
       read = ["B", "C", "D", "E"];
       write = ["C"];
+    } else if (userCategory === "1") {
+      read = ["D"];
+      write = ["D"];
+    } else if (userCategory === "2") {
+      read = ["E"];
+      write = ["E"];
     }
     let newOccupationId = occupationId;
     if (occupationId === "67d988345682680a67eee2c8") {
@@ -187,11 +212,11 @@ export const userLogin = async (req, res) => {
   console.log("User:---", email, password, userCategory);
   try {
     // ✅ Find User
-    const user = await UserModel.findOne({ email });
+    const user = await UserModel.findOne({ email, userCategory });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    if (user.userCategory !== userCategory) {
+    if (String(user.userCategory) !== String(userCategory)) {
       return res.status(404).json({ message: "Invalid category" });
     }
 
@@ -206,20 +231,32 @@ export const userLogin = async (req, res) => {
     let requiresVerification = false;
     let verificationType = null;
 
-    if (user.userCategory === "A" && !user.pinVerified) {
+    if (user.userCategory === "A" && !user.isPinVerified) {
       requiresVerification = true;
       verificationType = "PIN";
-    } else if (user.userCategory === "B" && !user.otpUsed) {
+    } else if (user.userCategory === "B" && !user.isOtpVerified) {
       requiresVerification = true;
       verificationType = "OTP";
+      const otp = generateOtp(user.fName.last, user.lName.last);
+      user.otp = otp;
+      user.otpExpire = Date.now() + 1.5 * 60 * 1000; // 1 minute 30 seconds
+      await user.save();
     }
-    if(user.userCategory === "1" && !user.otpUsed) {
+    if (user.userCategory === "1" && !user.isOtpVerified) {
       requiresVerification = true;
       verificationType = "OTP";
+      const otp = generateOtp(user.fName, user.lName);
+      user.otp = otp;
+      user.otpExpire = Date.now() + 1.5 * 60 * 1000; // 1 minute 30 seconds
+      await user.save();
     }
-    if (user.userCategory === "2" && !user.otpUsed) {
+    if (user.userCategory === "2" && !user.isOtpVerified) {
       requiresVerification = true;
       verificationType = "OTP";
+      const otp = generateOtp(user.fName, user.lName);
+      user.otp = otp;
+      user.otpExpire = Date.now() + 1.5 * 60 * 1000; // 1 minute 30 seconds
+      await user.save();
     }
 
     // ✅ Generate Token
@@ -255,11 +292,14 @@ export const userLogin = async (req, res) => {
         profileImage: user.profileImage,
         verificationStatus: user.verificationStatus,
         verificationType,
+        requiresVerification,
         isPinVerified: user.isPinVerified,
         isOtpVerified: user.isOtpVerified,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
         aadharNumber: user.aadharNumber,
+        isBlocked: user.isBlocked,
+        isDeleted: user.isDeleted,
       },
     });
   } catch (error) {
@@ -490,7 +530,40 @@ export const verifyPin = async (req, res) => {
     );
     console.info("Updated CodeModel for PIN:", pin);
 
-    return res.status(200).json({ message: "PIN verified successfully!" });
+    return res.status(200).json({
+      message: "PIN verified successfully!",
+      user: {
+        read: user.read,
+        write: user.write,
+        userId: user._id,
+        phone: user.phone,
+        fName: user.fName,
+        mName: user.mName,
+        lName: user.lName,
+        DOB: user.DOB,
+        gender: user.gender,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        state: user.state,
+        district: user.district,
+        area: user.area,
+        country: user.country,
+        userCategory: user.userCategory,
+        aadhaarCardImage1: user.aadhaarCardImage1,
+        aadhaarCardImage2: user.aadhaarCardImage2,
+        profileImage: user.profileImage,
+        verificationStatus: user.verificationStatus,
+
+        isPinVerified: user.isPinVerified,
+        isOtpVerified: user.isOtpVerified,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        aadharNumber: user.aadharNumber,
+        isBlocked: user.isBlocked,
+        isDeleted: user.isDeleted,
+      },
+    });
   } catch (error) {
     console.error("PIN verification error:", error);
     return res
@@ -536,27 +609,35 @@ export const verifyOtp = async (req, res) => {
     return res.status(200).json({
       message: "OTP verified successfully",
       user: {
-        userId: user.userId,
-        firstName: user.firstName,
-        middleName: user.middleName,
-        lastName: user.lastName,
+        read: user.read,
+        write: user.write,
+        userId: user._id,
+        phone: user.phone,
+        fName: user.fName,
+        mName: user.mName,
+        lName: user.lName,
+        DOB: user.DOB,
         gender: user.gender,
-        dateOfBirth: user.dateOfBirth,
-        password: user.password,
-        Location: user.location,
-        occupation: user.occupation,
-        otherOccupation: user.otherOccupation,
         email: user.email,
         phone: user.phone,
-        userCategory: user.userCategory,
-        country: user.country,
-        city: user.city,
-        countryCode: user.countryCode,
-        image: user.image,
-        aadhaarFrontImage: user.aadhaarFrontImage,
-        aadhaarBackImage: user.aadhaarBackImage,
         role: user.role,
+        state: user.state,
+        district: user.district,
+        area: user.area,
+        country: user.country,
+        userCategory: user.userCategory,
+        aadhaarCardImage1: user.aadhaarCardImage1,
+        aadhaarCardImage2: user.aadhaarCardImage2,
+        profileImage: user.profileImage,
         verificationStatus: user.verificationStatus,
+
+        isPinVerified: user.isPinVerified,
+        isOtpVerified: user.isOtpVerified,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        aadharNumber: user.aadharNumber,
+        isBlocked: user.isBlocked,
+        isDeleted: user.isDeleted,
       },
     });
   } catch (err) {
