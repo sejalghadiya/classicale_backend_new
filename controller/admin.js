@@ -698,15 +698,15 @@ export const userAccess = async (req, res) => {
     }
     if (user.userCategory === "B") {
       console.log("User Category B");
-      return sendOtpToCategoryB(req, res);
+      return sendOtpToUser(req, res);
     }
     if (user.userCategory === "1") {
       console.log("User Category 1");
-      return sendOtpToCategoryB(req, res);
+      return sendOtpToUser(req, res);
     }
     if (user.userCategory === "2") {
       console.log("User Category 1");
-      return sendOtpToCategoryB(req, res);
+      return sendOtpToUser(req, res);
     }
     return res.status(400).json({
       message: "Invalid user category",
@@ -817,7 +817,7 @@ const generateOTP = () => {
   return otp;
 };
 
-export const sendOtpToCategoryB = async (req, res) => {
+export const sendOtpToUser = async (req, res) => {
   try {
     const { email, userCategory } = req.body;
 
@@ -844,7 +844,8 @@ export const sendOtpToCategoryB = async (req, res) => {
 
     // Save OTP and mark as verified
     user.otp = otp;
-    user.isOtpVerified = true;
+    user.isOtpVerified = false;
+    user.isPinVerified = true; // Ensure pin is not verified
     user.otpExpire = Date.now() + 1.5 * 60 * 1000; // OTP expires in 1.5 minutes
     await user.save();
 

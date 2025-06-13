@@ -14,8 +14,7 @@ import {
   getReportedProducts,
   getUserByUserCategory,
   getUserCategory,
-  productActiveOrInactive,
-  sendOtpToCategoryB,
+  sendOtpToUser,
   sendPinAccess,
   updateProduct,
   userAccess,
@@ -28,7 +27,6 @@ import { getProductByCategory } from "../controller/product.js";
 const router = express.Router();
 
 const memoryStorage = multer.memoryStorage();
-
 
 // Admin login route
 router.post("/login", adminLogin);
@@ -55,7 +53,7 @@ router.get("/get-access-codes", getAccesCode);
 
 router.post("/access_pin", sendPinAccess);
 
-router.post("/access_otp", sendOtpToCategoryB);
+router.post("/access_otp", sendOtpToUser);
 
 router.post("/user-access", userAccess);
 

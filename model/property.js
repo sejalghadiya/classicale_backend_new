@@ -30,7 +30,14 @@ const PropertySchema = new mongoose.Schema(
     updatedTime: { type: Date, default: Date.now },
     isDeleted: { type: Boolean, default: false },
     images: [{ type: String }],
-    address1: { type: [String] },
+    //address1: { type: [String] },
+    street1: { type: [String] },
+    street2: { type: [String] },
+    areaLocation: { type: [String] },
+    city: { type: [String] },
+    state: { type: [String] },
+    country: { type: [String] },
+    pincode: { type: [String] },
     isDeleted: {
       type: Boolean,
       default: false,
@@ -49,10 +56,17 @@ const PropertySchema = new mongoose.Schema(
       type: [mongoose.Schema.Types.Mixed],
       default: [],
     },
+    location: {
+      type: { type: String, enum: ["Point"], default: "Point" },
+      coordinates: { type: [Number], default: [0, 0] }, // [longitude, latitude]
+    },
   },
   {
     timestamps: true,
   }
 );
+PropertySchema.index({ createdAt: -1 });
+PropertySchema.index({ updatedAt: -1 });
+PropertySchema.index({ location: "2dsphere" });
 
 export const PropertyModel = mongoose.model("property", PropertySchema);

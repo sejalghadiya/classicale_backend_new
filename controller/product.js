@@ -573,6 +573,7 @@ export const addProduct = async (req, res) => {
       console.log("model not found ");
       return res.status(400).json({ message: "Invalid Model Name" });
     }
+    
 
     const product = new Model(data);
     await product.save();
@@ -1055,12 +1056,48 @@ export const addOtherProduct = async (req, res) => {
 
 export const getAllProducts = async (req, res) => {
   try {
+    const { userId } = req.query;
+    if (!userId) {
+      console.log("❌ Missing userId");
+      return res.status(400).json({ message: "UserId is required" });
+    }
+    const user = await UserModel.findById(userId);
+    const userCategory = user?.userCategory;
+    var _query = {};
+    if (userCategory === "1") {
+      _query = {
+        isActive: true,
+        isDeleted: false,
+        categories: { $in: ["D"] },
+      };
+    }
+    if (userCategory === "2") {
+      _query = {
+        isActive: true,
+        isDeleted: false,
+        categories: { $in: ["E"] },
+      };
+    }
+    if (userCategory === "A") {
+      _query = {
+        isActive: true,
+        isDeleted: false,
+        categories: { $in: ["A", "B", "D", "E"] },
+      };
+    }
+    if (userCategory === "B") {
+      _query = {
+        isActive: true,
+        isDeleted: false,
+        categories: { $in: ["B", "C", "D", "E"] },
+      };
+    }
     const allProducts = {};
 
     for (const [key, Model] of Object.entries(productModels)) {
       const modelSchemaPaths = Model.schema.paths;
 
-      let query = Model.find({ isActive: true, isDeleted: false })
+      let query = Model.find(_query)
         .populate({
           path: "productType",
         })
@@ -1416,11 +1453,9 @@ export const filterProduct = async (req, res) => {
       req.query;
 
     if (subProductType && !productType) {
-      return res
-        .status(400)
-        .json({
-          message: "productType is required when subProductType is provided",
-        });
+      return res.status(400).json({
+        message: "productType is required when subProductType is provided",
+      });
     }
 
     const filter = { isActive: true, isDeleted: false };
@@ -2099,7 +2134,6 @@ export const getSubProductType = async (req, res) => {
 //         });
 //       }
 //     }
-    
 
 //     if (allProducts.length === 0) {
 //       return res

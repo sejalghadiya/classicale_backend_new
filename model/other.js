@@ -9,7 +9,14 @@ const OtherSchema = new mongoose.Schema(
     description: { type: [String] },
     images: [{ type: String }],
     categories: { type: String },
-    address1: { type: [String] },
+    // address1: { type: [String] },
+    street1: { type: [String] },
+    street2: { type: [String] },
+    area: { type: [String] },
+    city: { type: [String] },
+    state: { type: [String] },
+    country: { type: [String] },
+    pincode: { type: [String] },
     isDeleted: {
       type: Boolean,
       default: false,
@@ -23,10 +30,16 @@ const OtherSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "SubProductType",
     },
+    location: {
+      type: { type: String, enum: ["Point"], default: "Point" },
+      coordinates: { type: [Number], default: [0, 0] }, // [longitude, latitude]
+    },
   },
   {
     timestamps: true,
   }
 );
-
+OtherSchema.index({ createdAt: -1 });
+OtherSchema.index({ updatedAt: -1 });
+OtherSchema.index({ location: "2dsphere" });
 export const OtherModel = mongoose.model("other", OtherSchema);

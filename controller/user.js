@@ -136,10 +136,10 @@ export const userSignUp = async (req, res) => {
     } else if (userCategory === "B") {
       read = ["B", "C", "D", "E"];
       write = ["C"];
-    } else if (userCategory === "1") {
+    } else if (userCategory === "α") {
       read = ["D"];
       write = ["D"];
-    } else if (userCategory === "2") {
+    } else if (userCategory === "β") {
       read = ["E"];
       write = ["E"];
     }
@@ -242,7 +242,7 @@ export const userLogin = async (req, res) => {
       user.otpExpire = Date.now() + 1.5 * 60 * 1000; // 1 minute 30 seconds
       await user.save();
     }
-    if (user.userCategory === "1" && !user.isOtpVerified) {
+    if (user.userCategory === "α" && !user.isOtpVerified) {
       requiresVerification = true;
       verificationType = "OTP";
       const otp = generateOtp(user.fName, user.lName);
@@ -576,6 +576,8 @@ export const verifyOtp = async (req, res) => {
   const { userId, otp } = req.body;
 
   try {
+    console.log("Incoming OTP Verification Request:", req.body);
+
     const user = await UserModel.findById(userId);
 
     if (!user) {
