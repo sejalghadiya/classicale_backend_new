@@ -700,12 +700,12 @@ export const userAccess = async (req, res) => {
       console.log("User Category B");
       return sendOtpToUser(req, res);
     }
-    if (user.userCategory === "1") {
-      console.log("User Category 1");
-      return sendOtpToUser(req, res);
+    if (user.userCategory === "α") {
+      console.log("User Category α");
+      return sendPinAccess(req, res);
     }
-    if (user.userCategory === "2") {
-      console.log("User Category 1");
+    if (user.userCategory === "β") {
+      console.log("User Category β");
       return sendOtpToUser(req, res);
     }
     return res.status(400).json({
@@ -760,7 +760,7 @@ export const sendPinAccess = async (req, res) => {
 
     // Save pin in user
     user.assignedPins = newPin.code; // ✅ Correct field
-    user.isPinVerified = true;
+    user.isPinVerified = false;
     await user.save();
 
     // Send the email
@@ -1142,8 +1142,8 @@ export const getAllUser = async (req, res) => {
     // --- USER CATEGORY STATS ---
     const categoryAStats = await getCategoryStats("A");
     const categoryBStats = await getCategoryStats("B");
-    const category1Stats = await getCategoryStats("1");
-    const category2Stats = await getCategoryStats("2");
+    const category1Stats = await getCategoryStats("α");
+    const category2Stats = await getCategoryStats("β");
 
     const totalUsers = await UserModel.countDocuments();
     const totalVerifiedUsers = await UserModel.countDocuments({
@@ -1163,22 +1163,22 @@ export const getAllUser = async (req, res) => {
       isActive: false,
     });
 
-    const categoryAUnverifiedPinCount = await UserModel.countDocuments({
-      userCategory: { $regex: "A", $options: "i" },
-      isPinVerified: false,
-    });
-    const categoryBOtpUnverifiedCount = await UserModel.countDocuments({
-      userCategory: { $regex: "B", $options: "i" },
-      isOtpVerified: false,
-    });
-    const category1UnverifiedPinCount = await UserModel.countDocuments({
-      userCategory: { $regex: "1", $options: "i" },
-      isOtpVerified: false,
-    });
-    const category2UnverifiedPinCount = await UserModel.countDocuments({
-      userCategory: { $regex: "2", $options: "i" },
-      isOtpVerified: false,
-    });
+    // const categoryAUnverifiedPinCount = await UserModel.countDocuments({
+    //   userCategory: { $regex: "A", $options: "i" },
+    //   isPinVerified: false,
+    // });
+    // const categoryBOtpUnverifiedCount = await UserModel.countDocuments({
+    //   userCategory: { $regex: "B", $options: "i" },
+    //   isOtpVerified: false,
+    // });
+    // const category1UnverifiedPinCount = await UserModel.countDocuments({
+    //   userCategory: { $regex: "α", $options: "i" },
+    //   isOtpVerified: false,
+    // });
+    // const category2UnverifiedPinCount = await UserModel.countDocuments({
+    //   userCategory: { $regex: "β", $options: "i" },
+    //   isOtpVerified: false,
+    // });
 
     // --- PRODUCT CATEGORY COUNT STATS (ONLY A–E total count) ---
     const categoryList = ["A", "B", "C", "D", "E"];
@@ -1240,8 +1240,8 @@ export const getAllUser = async (req, res) => {
       categoryStats: {
         Category_A: categoryAStats,
         Category_B: categoryBStats,
-        Category_1: category1Stats,
-        Category_2: category2Stats,
+        Category_α: category1Stats,
+        Category_β: category2Stats,
       },
 
       // unverifiedCounts: {

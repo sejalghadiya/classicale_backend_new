@@ -50,9 +50,12 @@ export const userSignUp = async (req, res) => {
       DOB,
       occupationId,
       state,
-      district,
+      city,
       country,
       area,
+      street1,
+      street2,
+      pinCode,
       aadharNumber,
       userCategory,
       otherOccupationName,
@@ -132,7 +135,7 @@ export const userSignUp = async (req, res) => {
 
     if (userCategory === "A") {
       read = ["A", "B", "D", "E"];
-      write = ["A", "B", "D", "E"];
+      write = ["A", "B"];
     } else if (userCategory === "B") {
       read = ["B", "C", "D", "E"];
       write = ["C"];
@@ -174,16 +177,19 @@ export const userSignUp = async (req, res) => {
       DOB,
       occupationId: new mongoose.Types.ObjectId(newOccupationId),
       state,
-      district,
+      city,
       country,
       area,
+      street1,
+      street2,
+      pinCode,
       profileImage: profileImagePath,
       aadhaarCardImage1: aadhaarFrontPath,
       aadhaarCardImage2: aadhaarBackPath,
       aadharNumber,
       role: "user",
       userCategory,
-      isVerified: isAdminVerify,
+      isVerified: !isAdminVerify,
       isDeleted: false,
       isBlocked: false,
       isPinVerified: !isAdminVerify,
@@ -242,15 +248,15 @@ export const userLogin = async (req, res) => {
       user.otpExpire = Date.now() + 1.5 * 60 * 1000; // 1 minute 30 seconds
       await user.save();
     }
-    if (user.userCategory === "α" && !user.isOtpVerified) {
+    if (user.userCategory === "α" && !user.isPinVerified) {
       requiresVerification = true;
-      verificationType = "OTP";
-      const otp = generateOtp(user.fName, user.lName);
-      user.otp = otp;
-      user.otpExpire = Date.now() + 1.5 * 60 * 1000; // 1 minute 30 seconds
+      verificationType = "PIN";
+      // const otp = generateOtp(user.fName, user.lName);
+      // user.otp = otp;
+      // user.otpExpire = Date.now() + 1.5 * 60 * 1000; // 1 minute 30 seconds
       await user.save();
     }
-    if (user.userCategory === "2" && !user.isOtpVerified) {
+    if (user.userCategory === "β" && !user.isOtpVerified) {
       requiresVerification = true;
       verificationType = "OTP";
       const otp = generateOtp(user.fName, user.lName);
@@ -554,7 +560,6 @@ export const verifyPin = async (req, res) => {
         aadhaarCardImage2: user.aadhaarCardImage2,
         profileImage: user.profileImage,
         verificationStatus: user.verificationStatus,
-
         isPinVerified: user.isPinVerified,
         isOtpVerified: user.isOtpVerified,
         createdAt: user.createdAt,
@@ -632,7 +637,6 @@ export const verifyOtp = async (req, res) => {
         aadhaarCardImage2: user.aadhaarCardImage2,
         profileImage: user.profileImage,
         verificationStatus: user.verificationStatus,
-
         isPinVerified: user.isPinVerified,
         isOtpVerified: user.isOtpVerified,
         createdAt: user.createdAt,

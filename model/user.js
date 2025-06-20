@@ -42,7 +42,7 @@ const UserSchema = new mongoose.Schema(
     aadhaarCardImage2: { type: [String] },
     aadharNumber: { type: [String] },
     role: { type: String, enum: ["admin", "user"] },
-    userCategory: { type: String, enum: ["A", "B", "α", "β"] },
+    userCategory: { type: String, enum: ["A", "B", "α", "β"] },       
     isVerified: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
     isBlocked: { type: Boolean, default: false },
