@@ -885,7 +885,7 @@ export const addFavoriteProduct = async (req, res) => {
 
 export const getFavoriteProducts = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = req.params.userId || req.query.userId;
     console.log(userId);
 
     if (!userId) {
@@ -1053,112 +1053,185 @@ export const addOtherProduct = async (req, res) => {
   }
 };
 
+const MAX_RADIUS = 15 * 1000;
+const STEP_RADIUS = 5 * 1000;
+const MIN_FOUND_PRODUCTS = 1;
+
 export const getAllProducts = async (req, res) => {
   try {
     const { userId } = req.query;
-    const { latitude, longitude } = req.headers;
-    console.log("Latitude:", latitude);
-    console.log("Longitude:", longitude);
+    const { latitude, longitude, area, city, state, country } = req.headers;
 
-    if (!userId) {
-      console.log("❌ Missing userId");
-      return res.status(400).json({ message: "UserId is required" });
+    if (!userId || !latitude || !longitude || !country) {
+      return res.status(400).json({
+        message: "userId, latitude, longitude, and country are required",
+      });
     }
+
     const user = await UserModel.findById(userId);
     const userCategory = user?.userCategory;
-    var _query = {};
-    const maxDistance = 20 * 1000; // 10km in meters
-    var distanceQuery = {
-      location: {
-        $near: {
-          $geometry: {
-            type: "Point",
-            coordinates: [parseFloat(longitude), parseFloat(latitude)], // input coordinates
-          },
-          $maxDistance: maxDistance, // 10km in meters
-        },
-      },
+
+    const categoryMap = {
+      1: ["D"],
+      2: ["E"],
+      A: ["A", "B", "D", "E"],
+      B: ["B", "C", "D", "E"],
     };
-    if (userCategory === "1") {
-      _query = {
-        isActive: true,
-        isDeleted: false,
-        categories: { $in: ["D"] },
-        location: distanceQuery.location,
-      };
-    }
-    if (userCategory === "2") {
-      _query = {
-        isActive: true,
-        isDeleted: false,
-        categories: { $in: ["E"] },
-        location: distanceQuery.location,
-      };
-    }
-    if (userCategory === "A") {
-      _query = {
-        isActive: true,
-        isDeleted: false,
-        categories: { $in: ["A", "B", "D", "E"] },
-        location: distanceQuery.location,
-      };
-    }
-    if (userCategory === "B") {
-      _query = {
-        isActive: true,
-        isDeleted: false,
-        categories: { $in: ["B", "C", "D", "E"] },
-        location: distanceQuery.location,
-      };
-    }
-    const allProducts = {};
 
-    for (const [key, Model] of Object.entries(productModels)) {
-      const modelSchemaPaths = Model.schema.paths;
+    const categoryFilter = categoryMap[userCategory];
+    if (!categoryFilter) {
+      return res.status(400).json({ message: "Invalid user category" });
+    }
 
-      let query = Model.find(_query)
-        .populate({
-          path: "productType",
-        })
-        .populate({
+    let allProducts = {};
+    let found = false;
+
+    // Helper function to query all models
+    const fetchProductsFromAllModels = async (baseQuery) => {
+      let tempProducts = {};
+      let totalFound = 0;
+
+      for (const [key, Model] of Object.entries(productModels)) {
+        let query = Model.find(baseQuery).populate("productType").populate({
           path: "subProductType",
           select: "-modelName -productType",
         });
+        console.log(`Fetching products from model: ${query}`);
 
-      // ✅ Only populate userId if the schema has the userId field
-      if ("userId" in modelSchemaPaths) {
-        query = query.populate({
-          path: "userId", // Correct field to populate
-          select:
-            "fName lName mName email phone profileImage state district country area ", // Only pull the fName of the user
+        if ("userId" in Model.schema.paths) {
+          query = query.populate({
+            path: "userId",
+            select:
+              "fName lName mName email phone profileImage state district country area",
+          });
+        }
+
+        const results = await query;
+        if (results.length > 0) {
+          tempProducts[key] = results;
+          totalFound += results.length;
+        }
+      }
+
+      return { tempProducts, totalFound };
+    };
+
+    // ------------------------
+    // ✅ PRIORITY 1: Radius Search if Area is Present
+    // ------------------------
+    if (area) {
+      console.log(`Searching within ${area} area...`);
+
+      for (
+        let radius = STEP_RADIUS;
+        radius <= MAX_RADIUS;
+        radius += STEP_RADIUS
+      ) {
+        const geoQuery = {
+          isActive: true,
+          isDeleted: false,
+          categories: { $in: categoryFilter },
+          location: {
+            $near: {
+              $geometry: {
+                type: "Point",
+                coordinates: [parseFloat(longitude), parseFloat(latitude)],
+              },
+              $maxDistance: radius,
+            },
+          },
+        };
+
+        const { tempProducts, totalFound } = await fetchProductsFromAllModels(
+          geoQuery
+        );
+
+        if (totalFound >= MIN_FOUND_PRODUCTS) {
+          allProducts = tempProducts;
+          found = true;
+        } else {
+          console.log(
+            `No products found within ${
+              radius / 1000
+            } km radius. Trying larger radius...`
+          );
+        }
+      }
+    }
+
+    // ------------------------
+    // ✅ PRIORITY 2: Fallback to Location Filtering
+    // ------------------------
+    if (!found) {
+      console.log("Searching by location filter...");
+
+      let locationQuery = {
+        isActive: true,
+        isDeleted: false,
+        categories: { $in: categoryFilter },
+      };
+
+      const exprConditions = [];
+
+      if (city) {
+        exprConditions.push({
+          $eq: [
+            { $arrayElemAt: ["$city", { $subtract: [{ $size: "$city" }, 1] }] },
+            city,
+          ],
         });
       }
 
-      const results = await query;
+      if (state) {
+        exprConditions.push({
+          $eq: [
+            {
+              $arrayElemAt: ["$state", { $subtract: [{ $size: "$state" }, 1] }],
+            },
+            state,
+          ],
+        });
+      }
 
-      results.forEach((product) => {
-        // Check if the product has a userId and log the fName
-        if (product.userId) {
-          if (product.userId.fName) {
-            console.log(`📦 [${key}] User fName:`, product.userId.fName);
-          } else {
-            console.log(`📦 [${key}] User found but no fName`);
-          }
-        } else {
-          console.log(`📦 [${key}] No user`);
-        }
-      });
+      if (country) {
+        exprConditions.push({
+          $eq: [
+            {
+              $arrayElemAt: [
+                "$country",
+                { $subtract: [{ $size: "$country" }, 1] },
+              ],
+            },
+            country,
+          ],
+        });
+      }
 
-      allProducts[key] = results;
+      if (exprConditions.length > 0) {
+        locationQuery.$expr = { $and: exprConditions };
+      }
+      console.dir(locationQuery, { depth: null, colors: true });
+
+      const { tempProducts, totalFound } = await fetchProductsFromAllModels(
+        locationQuery
+      );
+
+      if (totalFound >= MIN_FOUND_PRODUCTS) {
+        allProducts = tempProducts;
+        found = true;
+      }
     }
 
     return res.status(200).json({
-      message: "All products fetched successfully",
+      message: found ? "✅ Products found." : "❌ No products found.",
       products: allProducts,
     });
   } catch (error) {
-    console.log("❌ Server Error:", error.message);
-    res.status(500).json({ message: "Server error!", error: error.message });
+    console.error("❌ Server Error:", error.message);
+    return res.status(500).json({
+      message: "Server error!",
+      error: error.message,
+    });
   }
 };
 
@@ -1307,6 +1380,7 @@ const searchableFields = [
   "productType",
   "subProductType",
 ];
+
 export const searchProduct = async (req, res) => {
   try {
     const {
@@ -1314,14 +1388,16 @@ export const searchProduct = async (req, res) => {
       categories,
       productType,
       subProductType,
+      latitude,
+      longitude,
       area,
-      district,
+      city,
       state,
-      country,
     } = req.query;
 
     const regex = new RegExp(keyword, "i");
 
+    // 🔍 Get productType/subProductType matches by name
     const matchingProductTypes = await ProductTypeModel.find({
       name: regex,
     }).select("_id");
@@ -1334,16 +1410,31 @@ export const searchProduct = async (req, res) => {
       isDeleted: false,
     };
 
-    // Category and Type filters
+    // ✅ Geo filtering (20km)
+    if (latitude && longitude) {
+      queryConditions.location = {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [parseFloat(longitude), parseFloat(latitude)],
+          },
+          $maxDistance: 20000, // 20 km
+        },
+      };
+    }
+
+    // ✅ Field filters
     if (categories) queryConditions.categories = categories;
     if (productType) queryConditions.productType = productType;
     if (subProductType) queryConditions.subProductType = subProductType;
 
-    // ✅ Location filters from user profile
-    if (area) queryConditions["userId.area"] = area;
-    if (district) queryConditions["userId.district"] = district;
-    if (state) queryConditions["userId.state"] = state;
-    if (country) queryConditions["userId.country"] = country;
+    // ✅ Location field filters
+    if (area)
+      queryConditions["location.area"] = { $regex: area, $options: "i" };
+    if (city)
+      queryConditions["location.city"] = { $regex: city, $options: "i" };
+    if (state)
+      queryConditions["location.state"] = { $regex: state, $options: "i" };
 
     const populateOptions = [
       { path: "productType", select: "_id name modelName" },
@@ -1365,9 +1456,10 @@ export const searchProduct = async (req, res) => {
         { brand: regex },
         { model: regex },
         { bhk: regex },
-        { address1: regex },
         { facing: regex },
-        { area: regex },
+        { area: regex }, // ✅ include area in search
+        { city: regex }, // optional: city in search
+        { state: regex }, // optional: state in search
       ];
 
       if (matchingProductTypes.length > 0) {
@@ -1393,9 +1485,11 @@ export const searchProduct = async (req, res) => {
     }
 
     if (!results.length) {
-      return res
-        .status(404)
-        .json({ message: "No products found", count: 0, data: [] });
+      return res.status(201).json({
+        message: "No products found",
+        count: 0,
+        data: [],
+      });
     }
 
     res.status(200).json({
@@ -1408,6 +1502,115 @@ export const searchProduct = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+// export const searchProduct = async (req, res) => {
+//   try {
+//     const {
+//       keyword = "",
+//       categories,
+//       productType,
+//       subProductType,
+//       latitude,
+//       longitude,
+//       area, // ✅
+//       city, // ✅
+//       state,
+//     } = req.query;
+
+//     const regex = new RegExp(keyword, "i");
+
+//     const matchingProductTypes = await ProductTypeModel.find({
+//       name: regex,
+//     }).select("_id");
+
+//     const matchingSubProductTypes = await SubProductTypeModel.find({
+//       name: regex,
+//     }).select("_id");
+
+//     const queryConditions = {
+//       isActive: true,
+//       isDeleted: false,
+//     };
+
+//     // ✅ Geo filtering
+//     if (latitude && longitude) {
+//       queryConditions.location = {
+//         $near: {
+//           $geometry: {
+//             type: "Point",
+//             coordinates: [parseFloat(longitude), parseFloat(latitude)],
+//           },
+//           $maxDistance: 20000, // 20km
+//         },
+//       };
+//     }
+
+//     // ✅ Filters
+//     if (categories) queryConditions.categories = categories;
+//     if (productType) queryConditions.productType = productType;
+//     if (subProductType) queryConditions.subProductType = subProductType;
+
+//     const populateOptions = [
+//       { path: "productType", select: "_id name modelName" },
+//       { path: "subProductType", select: "_id name" },
+//       {
+//         path: "userId",
+//         select:
+//           "fName lName mName email phone state district country area profileImage _id",
+//       },
+//     ];
+
+//     const results = [];
+
+//     for (const [modelName, Model] of Object.entries(productModels)) {
+//       const orConditions = [
+//         { adTitle: regex },
+//         { description: regex },
+//         { price: regex },
+//         { brand: regex },
+//         { model: regex },
+//         { bhk: regex },
+//         { facing: regex },
+//       ];
+
+//       if (matchingProductTypes.length > 0) {
+//         orConditions.push({
+//           productType: { $in: matchingProductTypes.map((p) => p._id) },
+//         });
+//       }
+
+//       if (matchingSubProductTypes.length > 0) {
+//         orConditions.push({
+//           subProductType: { $in: matchingSubProductTypes.map((s) => s._id) },
+//         });
+//       }
+
+//       const modelResults = await Model.find({
+//         ...queryConditions,
+//         $or: orConditions,
+//       })
+//         .populate(populateOptions)
+//         .lean();
+
+//       results.push(...modelResults.map((p) => ({ ...p, type: modelName })));
+//     }
+
+//     if (!results.length) {
+//       return res
+//         .status(201)
+//         .json({ message: "No products found", count: 0, data: [] });
+//     }
+
+//     res.status(200).json({
+//       message: "Search results",
+//       count: results.length,
+//       data: results,
+//     });
+//   } catch (error) {
+//     console.error("❌ Error in searchProduct:", error);
+//     res.status(500).json({ message: "Server error", error: error.message });
+//   }
+// };
 
 // export const searchProduct = async (req, res) => {
 //   try {

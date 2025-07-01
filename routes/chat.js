@@ -4,6 +4,7 @@ import {
   fetchAllConversations,
   fetchConversationId,
   fetchMessages,
+  getUnreadMessageCount,
   sendMessage,
   updateAllMessagesStatus,
 } from "../controller/chat.js";
@@ -16,5 +17,6 @@ router.post("/send-message", sendMessage);
 router.get("/get-all-messages/:conversationId", fetchMessages);
 router.get("/get-all-conversations/:userId", fetchAllConversations);
 router.put("/update-message-status", updateAllMessagesStatus);
+router.get("/unread_message_count", getUnreadMessageCount);
 
 export default router;

@@ -5,7 +5,7 @@ const OtherSchema = new mongoose.Schema(
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
     type: { type: Number, enum: [0, 1, 2] }, // 0  for nil, 1 for job and 2 for service
     price: { type: [String] },
-    title: { type: [String] },
+    adTitle: { type: [String] },
     description: { type: [String] },
     images: [{ type: String }],
     categories: { type: String },

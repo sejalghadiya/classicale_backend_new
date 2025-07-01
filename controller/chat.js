@@ -404,3 +404,28 @@ export const updateAllMessagesStatus = async (req, res) => {
   }
 };
 
+//unread message count 
+export const getUnreadMessageCount = async (req, res) => {
+  const { userId } = req.body;
+
+  try {
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    const unreadCount = await CommunicateModel.countDocuments({
+      senderId: { $ne: userId }, // not sent by the user
+      status: { $ne: "read" }, // not yet read
+      receiverId: userId, // optional: only if you store receiverId
+    });
+
+    res.status(200).json({
+      message: "Unread message count fetched successfully",
+      status: 200,
+      unreadCount,
+    });
+  } catch (error) {
+    console.error("Error fetching unread message count:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
