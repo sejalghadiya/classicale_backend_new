@@ -9,6 +9,9 @@ const Book_sport_hobbySchema = new mongoose.Schema(
     images: [{ type: String }],
     categories: { type: String },
     // address1: { type: [String] },
+    brand: { type: [String] },
+    model: { type: [String] },
+    addLink: { type: [String] },
     street1: { type: [String] },
     street2: { type: [String] },
     area: { type: [String] },
@@ -16,6 +19,7 @@ const Book_sport_hobbySchema = new mongoose.Schema(
     state: { type: [String] },
     pincode: { type: [String] },
     country: { type: [String] },
+    view_count: { type: [mongoose.Schema.Types.ObjectId], ref: "user" },
     isDeleted: {
       type: Boolean,
       default: false,
@@ -42,4 +46,7 @@ Book_sport_hobbySchema.index({ createdAt: -1 });
 Book_sport_hobbySchema.index({ updatedAt: -1 });
 Book_sport_hobbySchema.index({ location: "2dsphere" });
 
-export const BookSportHobbyModel = mongoose.model("book_sport_hobby", Book_sport_hobbySchema);
+export const BookSportHobbyModel = mongoose.model(
+  "book_sport_hobby",
+  Book_sport_hobbySchema
+);

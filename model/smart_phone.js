@@ -18,10 +18,13 @@ const SmartPhoneSchema = new mongoose.Schema(
     street1: { type: [String] },
     street2: { type: [String] },
     area: { type: [String] },
+    addLink: { type: [String] },
     city: { type: [String] },
     state: { type: [String] },
     country: { type: [String] },
     pincode: { type: [String] },
+    view_count: { type: [mongoose.Schema.Types.ObjectId], ref: "user" },
+
     isDeleted: {
       type: Boolean,
       default: false,

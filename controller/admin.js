@@ -178,14 +178,16 @@ export const getUserByUserCategory = async (req, res) => {
   try {
     const { userCategory } = req.query;
 
-    if (!userCategory) {
-      return res.status(400).json({ message: "userCategory is required" });
-    }
+    // if (!userCategory) {
+    //   return res.status(400).json({ message: "userCategory is required" });
+    // }
 
     if (!userCategory) {
-      return res.status(400).json({ message: "Invalid userCategory value" });
+      const users = await UserModel.find()
+        .select("-password -otp -otpExpire") // Exclude sensitive fields
+        .populate("occupationId"); // Populate if occupationId exists
+      return res.status(200).json({ success: true, users });
     }
-
     const users = await UserModel.find({ userCategory })
       .select("-password -otp -otpExpire") // Exclude sensitive fields
       .populate("occupationId"); // Populate if occupationId exists
@@ -862,6 +864,39 @@ export const sendOtpToUser = async (req, res) => {
 };
 
 //user active-inactive
+// export const userActiveOrInactive = async (req, res) => {
+//   try {
+//     const { userId } = req.query;
+
+//     if (!userId) {
+//       return res.status(400).json({ message: "User ID is required" });
+//     }
+
+//     // Find the user
+//     const user = await UserModel.findById(userId);
+//     if (!user) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+
+//     // Toggle isBlocked status
+//     user.isActive = !user.isActive;
+//     await user.save();
+
+//     return res.status(200).json({
+//       message: `User ${
+//         user.isActive ? "activated" : "deactivated"
+//       } successfully`,
+//       user,
+//     });
+//   } catch (error) {
+//     console.error("Error toggling user status:", error);
+//     return res.status(500).json({
+//       message: "Server error",
+//       error: error.message,
+//     });
+//   }
+// };
+
 export const userActiveOrInactive = async (req, res) => {
   try {
     const { userId } = req.query;
@@ -876,9 +911,23 @@ export const userActiveOrInactive = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Toggle isBlocked status
+    // Toggle isActive status
     user.isActive = !user.isActive;
     await user.save();
+
+    // Prepare email content
+    const subject = user.isActive ? "Account Activated" : "Account Deactivated";
+
+    const text = user.isActive
+      ? `Hello ${
+          user.name || "User"
+        },\n\nYour account has been activated. You can now access our services.\n\nRegards,\nSupport Team`
+      : `Hello ${
+          user.name || "User"
+        },\n\nYour account has been temporarily deactivated. Please contact support if this was a mistake.\n\nRegards,\nSupport Team`;
+
+    // Send email
+    await sendEmail(user.email, subject, text);
 
     return res.status(200).json({
       message: `User ${
@@ -1269,5 +1318,104 @@ export const getAllUser = async (req, res) => {
       message: "Server Error",
       error: error.message,
     });
+  }
+};
+
+//user list by assign pin
+export const getUserListByAssignPin = async (req, res) => {
+  try {
+    const { pin } = req.query;
+
+    if (!pin) {
+      return res.status(400).json({ message: "Pin is required" });
+    }
+    console.log("Pin:", pin);
+
+    const users = await UserModel.find({ assignedPins: pin })
+      .select(
+        "fName lName mName email phone profileImage state district country area"
+      )
+      .populate("assignedPins");
+
+    if (users.length === 0) {
+      return res.status(404).json({ message: "No users found with this pin" });
+    }
+
+    return res.status(200).json({
+      message: "Users fetched successfully",
+      users,
+    });
+  } catch (error) {
+    console.error("❌ Server Error:", error.message);
+    return res
+      .status(500)
+      .json({ message: "Server error!", error: error.message });
+  }
+};
+
+export const getUserByID = async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ message: "userId is required" });
+    }
+
+    const user = await UserModel.findById(userId)
+      .select("-password -otp -otpExpire") // Exclude sensitive fields
+      .populate("occupationId"); // Populate the occupationId field
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json({ success: true, user });
+  } catch (error) {
+    console.error("Error in getUserByID:", error);
+    return res
+      .status(500)
+      .json({ message: "Server Error", error: error.message });
+  }
+};
+
+export const getProductsByUser = async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid userId" });
+    }
+
+    let allUserProducts = [];
+
+    for (const key in productModels) {
+      const Model = productModels[key];
+      const products = await Model.find({ userId })
+        .populate({
+          path: "productType",
+        })
+        .populate({
+          path: "subProductType",
+          select: "-modelName -productType",
+        })
+        .populate({
+          path: "userId",
+          select:
+            "fName lName mName email phone profileImage state district country area ", // Only pull the fName of the user
+        });
+
+      allUserProducts.push(...products);
+    }
+    console.log(allUserProducts);
+
+    return res.status(200).json({
+      count: allUserProducts.length,
+      products: allUserProducts,
+    });
+  } catch (error) {
+    console.error("❌ Error in getProductsByUserId:", error.message);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };

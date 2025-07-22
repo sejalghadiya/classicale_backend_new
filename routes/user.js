@@ -14,46 +14,39 @@ import {
   getProductSubType,
   getUserByID,
   repostProducts,
+  createRating,
 } from "../controller/user.js";
 import { upload } from "../upload.js";
+import authenticateUser from "../auth/middle.js";
 const router = express.Router();
-
+router.post("/login", userLogin);
+router.post("/signup", userSignUp);
 router.post("/createNewPassword", createNewPassword);
 router.get("/getOccupation", getOccupation);
 router.post("/verifyPin", verifyPin);
-
 router.post("/verifyOtpUser", verifyOtp);
 router.post("/reset-password", resetPassword);
-router.post("/login", userLogin);
-router.post("/report-product", repostProducts);
 
-router.post(
-  "/signup",
-  upload.fields([
-    // { name: "profileImage", maxCount: 1 },
-    // { name: "aadhaarCardImage1", maxCount: 1 },
-    // { name: "aadhaarCardImage2", maxCount: 1 },
-  ]),
-  userSignUp
-);
+router.post("/report-product", authenticateUser, repostProducts);
 router.put(
   "/updateUser",
-  // upload.fields([
-  //   { name: "profileImage", maxCount: 1 },
-  //   { name: "aadhaarCardImage1", maxCount: 1 },
-  //   { name: "aadhaarCardImage2", maxCount: 1 },
-  // ]),
   updateUser
 );
-router.get("/getUserByID",getUserByID);
+router.get("/getUserByID", authenticateUser, getUserByID);
 
-router.post("/checkBoth", checkBothUser);
+router.post("/checkBoth", authenticateUser, checkBothUser);
 
-router.get("/get-occupations", getOtherOccupations);
+router.get("/get-occupations", authenticateUser, getOtherOccupations);
 
-router.get("/get-productType", getProductTypes);
+router.get("/get-productType", authenticateUser, getProductTypes);
 
-router.get("/get-sub-product-type/:sub_product_type_id", getProductSubType);
+router.get(
+  "/get-sub-product-type/:sub_product_type_id",
+  authenticateUser,
+  getProductSubType
+);
+
+router.post("/add_rating", authenticateUser, createRating);
 
 
 

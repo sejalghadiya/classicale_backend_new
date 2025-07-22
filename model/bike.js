@@ -12,7 +12,6 @@ const BikeSchema = new mongoose.Schema(
     description: { type: [String] },
     images: [{ type: String }],
     categories: { type: String },
-    //address1: { type: [String] },
     street1: { type: [String] },
     street2: { type: [String] },
     area: { type: [String] },
@@ -20,6 +19,7 @@ const BikeSchema = new mongoose.Schema(
     state: { type: [String] },
     pincode: { type: [String] },
     country: { type: [String] },
+    addLink: { type: [String] },
     isDeleted: {
       type: Boolean,
       default: false,
@@ -37,11 +37,7 @@ const BikeSchema = new mongoose.Schema(
       type: { type: String, enum: ["Point"], default: "Point" },
       coordinates: { type: [Number], default: [0, 0] }, // [longitude, latitude]
     },
-    // viewCount: {
-    //   type: Number,
-    //   default: 0,
-    // },
-    //viewedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "user" }],
+    view_count: { type: [mongoose.Schema.Types.ObjectId], ref: "user" },
   },
   {
     timestamps: true,

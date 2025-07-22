@@ -9,6 +9,7 @@ import { SubProductTypeModel } from "../model/sub_product_type.js";
 import { ProductTypeModel } from "../model/product_type.js";
 import { saveBase64Image } from "../utils/image_store.js";
 import { ReportProductModel } from "../model/reoprt_product.js";
+import { RatingModel } from "../model/rating.js";
 
 const generateOtp = (firstName, lastName) => {
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -61,6 +62,7 @@ export const userSignUp = async (req, res) => {
       otherOccupationName,
       aadharImage,
       profileImage,
+      uIdNumber,
     } = req.body;
 
     const emailRegex = /^[a-zA-Z0-9]+@[a-zA-Z0-9]+\.[a-zA-Z]+$/;
@@ -116,19 +118,7 @@ export const userSignUp = async (req, res) => {
       return res.status(400).json({ message: "Aadhar card image not found" });
     }
 
-    // const profileImagePath = req.files?.profileImage
-    //   ? `/public/profileImages/${req.files.profileImage[0].filename}`
-    //   : null;
-    // console.log(req.files?.profileImage);
-    // const aadhaarFrontPath = req.files?.aadhaarCardImage1
-    //   ? `/public/aadharcardImages/${req.files.aadhaarCardImage1[0].filename}`
-    //   : null;
-    // const aadhaarBackPath = req.files?.aadhaarCardImage2
-    //   ? `/public/aadharcardImages/${req.files.aadhaarCardImage2[0].filename}`
-    //   : null;
-
-    // Determine if admin verification is required
-    let isAdminVerify = userCategory === "A";
+    let isAdminVerify = userCategory === "A" || userCategory === "α";
 
     let read = [];
     let write = [];
@@ -179,6 +169,7 @@ export const userSignUp = async (req, res) => {
       state,
       city,
       country,
+      uIdNumber,
       area,
       street1,
       street2,
@@ -194,6 +185,7 @@ export const userSignUp = async (req, res) => {
       isBlocked: false,
       isPinVerified: !isAdminVerify,
       isOtpVerified: isAdminVerify,
+      isActive: true,
     });
 
     // Save user
@@ -221,6 +213,17 @@ export const userLogin = async (req, res) => {
     const user = await UserModel.findOne({ email, userCategory });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
+    }
+    if (user.isDeleted) {
+      return res
+        .status(404)
+        .json({ code: "ACCOUNT_DELETED", error: "User account is deleted." });
+    }
+    if (!user.isActive) {
+      return res.status(423).json({
+        code: "ACCOUNT_LOCKED",
+        error: "User account is not active.",
+      });
     }
     if (String(user.userCategory) !== String(userCategory)) {
       return res.status(404).json({ message: "Invalid category" });
@@ -276,6 +279,7 @@ export const userLogin = async (req, res) => {
       message: "Login successful",
       token,
       user: {
+        uIdNumber: user.uIdNumber,
         read: user.read,
         write: user.write,
         userId: user._id,
@@ -306,6 +310,7 @@ export const userLogin = async (req, res) => {
         aadharNumber: user.aadharNumber,
         isBlocked: user.isBlocked,
         isDeleted: user.isDeleted,
+        isActive: user.isActive,
       },
     });
   } catch (error) {
@@ -393,7 +398,7 @@ export const updateUser = async (req, res) => {
     if (user.updateCount >= 3) {
       return res.status(403).json({
         message:
-          "Update limit reached. You can't update your profile more than 3 times.",
+          "Your profile has been updated more than 3 times. Please contact customer support.",
       });
     }
     user.updateCount = (user.updateCount || 0) + 1;
@@ -536,8 +541,16 @@ export const verifyPin = async (req, res) => {
     );
     console.info("Updated CodeModel for PIN:", pin);
 
+    // ✅ Generate Token
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "60d" }
+    );
+
     return res.status(200).json({
       message: "PIN verified successfully!",
+      token,
       user: {
         read: user.read,
         write: user.write,
@@ -611,10 +624,17 @@ export const verifyOtp = async (req, res) => {
     user.otp = null; // Clear OTP
     user.otpExpire = null; // Clear OTP expiration time
     await user.save();
+    // ✅ Generate Token
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "60d" }
+    );
 
     // Send the user details in the response
     return res.status(200).json({
       message: "OTP verified successfully",
+      token,
       user: {
         read: user.read,
         write: user.write,
@@ -805,5 +825,53 @@ export const repostProducts = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Server error", error: error.message });
+  }
+};
+
+export const createRating = async (req, res) => {
+  try {
+    const { rating, comment } = req.body;
+    const userId = req.user.id;
+
+    // Validate input
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ msg: "Rating must be between 1 and 5" });
+    }
+
+    const newRating = new RatingModel({
+      user: userId,
+      rating,
+      comment,
+    });
+
+    await newRating.save();
+
+    return res.status(201).json(newRating);
+  } catch (err) {
+    console.error(err);
+
+    // 💥 Duplicate error handling
+    if (err.code === 11000) {
+      return res.status(409).json({
+        msg: "You have already submitted this rating.",
+      });
+    }
+
+    return res.status(500).json({ msg: "Server error" });
+  }
+};
+
+
+
+export const getAllRatings = async (req, res) => {
+  try {
+    const ratings = await RatingModel.find()
+      .sort({ createdAt: -1 }) // latest first
+      .populate("user");       // ✅ Populate full user object
+
+    res.status(200).json(ratings);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Server error" });
   }
 };

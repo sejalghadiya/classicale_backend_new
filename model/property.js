@@ -31,6 +31,9 @@ const PropertySchema = new mongoose.Schema(
     isDeleted: { type: Boolean, default: false },
     images: [{ type: String }],
     //address1: { type: [String] },
+    brand: { type: [String] },
+    model: { type: [String] },
+    addLink: { type: [String] }, // Added for additional links
     street1: { type: [String] },
     street2: { type: [String] },
     areaLocation: { type: [String] },
@@ -38,6 +41,7 @@ const PropertySchema = new mongoose.Schema(
     state: { type: [String] },
     country: { type: [String] },
     pincode: { type: [String] },
+    view_count: { type: [mongoose.Schema.Types.ObjectId], ref: "user" },
     isDeleted: {
       type: Boolean,
       default: false,

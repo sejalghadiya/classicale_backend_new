@@ -14,57 +14,85 @@ import {
   getReportedProducts,
   getUserByUserCategory,
   getUserCategory,
+  getUserListByAssignPin,
   sendOtpToUser,
   sendPinAccess,
   updateProduct,
   userAccess,
   userActiveOrInactive,
+  getUserByID,
 } from "../controller/admin.js";
 
 import multer from "multer";
-import { getProductByCategory } from "../controller/product.js";
+import  { authenticateAdmin } from "../auth/middle.js";
+import { getProductsByUser } from "../controller/product.js";
+
 
 const router = express.Router();
 
 const memoryStorage = multer.memoryStorage();
 
 // Admin login route
-router.post("/login", adminLogin);
+router.post("/login",adminLogin);
 
-router.get("/get_productS_Type", getProductType);
+router.get("/get_productS_Type",getProductType);
 
 router.get("/get_product_with_type", getProductWithType);
 
-router.get("/get_user_by_userCategory", getUserByUserCategory);
+router.get(
+  "/get_user_by_userCategory",
+  authenticateAdmin,
+  getUserByUserCategory
+);
 
-router.get("/get_product", getProductById);
 
-router.put("/update_product_for_admin", updateProduct);
+router.get("/get-product-by-id", getProductById);
+router.get("/get_product", authenticateAdmin, getProductById);
 
-router.delete("/delete_product_by_admin", deleteProduct);
+router.put("/update_product_for_admin", authenticateAdmin, updateProduct);
 
-router.get("/get_user_category", getUserCategory);
+router.delete("/delete_product_by_admin", authenticateAdmin, deleteProduct);
 
-router.delete("/delete_user_by_admin", deleteUser);
+router.get("/get_user_category", authenticateAdmin, getUserCategory);
 
-router.get("/get_all_user", getAllUser);
+router.delete("/delete_user_by_admin", authenticateAdmin, deleteUser);
 
-router.get("/get-access-codes", getAccesCode);
+router.get("/get_all_user", authenticateAdmin, getAllUser);
 
-router.post("/access_pin", sendPinAccess);
+router.get("/get-access-codes", authenticateAdmin, getAccesCode);
 
-router.post("/access_otp", sendOtpToUser);
+router.post("/access_pin", authenticateAdmin, sendPinAccess);
 
-router.post("/user-access", userAccess);
+router.post("/access_otp", authenticateAdmin, sendOtpToUser);
 
-router.post("/user_active_inActive", userActiveOrInactive);
+router.post("/user-access", authenticateAdmin, userAccess);
 
-router.get("/report_product", getReportedProducts);
+router.post("/user_active_inActive", authenticateAdmin, userActiveOrInactive);
 
-router.get("/get_report_product_by_id", getReportDetailsById);
+router.get("/report_product", authenticateAdmin, getReportedProducts);
 
-router.get("/get_report_count", getReportCount);
+router.get(
+  "/get_report_product_by_id",
+  authenticateAdmin,
+  getReportDetailsById
+);
 
-router.get("/get_product_by_category", getAllProductByCategory);
+router.get("/get_report_count", authenticateAdmin, getReportCount);
+
+router.get(
+  "/get_product_by_category",
+  authenticateAdmin,
+  getAllProductByCategory
+);
+
+router.get(
+  "/get-user-by-assign-pin",
+  authenticateAdmin,
+  getUserListByAssignPin
+);
+
+router.get("/getUserByID", authenticateAdmin, getUserByID);
+
+router.get("/get-product-by-userId", authenticateAdmin, getProductsByUser);
 //router.get("/product_active_inactive", productActiveOrInactive);
 export default router;

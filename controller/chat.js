@@ -14,6 +14,7 @@ import { ServicesModel } from "../model/services.js";
 import { SmartPhoneModel } from "../model/smart_phone.js";
 import { io } from "../index.js";
 import { onlineUsers, joinConversation } from "../socket.js";
+import { saveBase64Image } from "../utils/image_store.js";
 const productModels = {
   Bike: BikeModel,
   Car: CarModel,
@@ -182,32 +183,55 @@ export const sendMessage = async (req, res) => {
         return res.status(404).json({ message: "Conversation not found" });
       }
       // Identify recipient (the other participant)
+      console.log("senderId", senderId);
+
       const recipientId = conversation.participants.find(
         (id) => id.toString() !== senderId
       );
       console.log("recipientId", recipientId);
       const onlineUserSocketId = onlineUsers.get(recipientId.toString());
       const onlineSenderSocketId = onlineUsers.get(senderId.toString());
-      const recipientSocketId = joinConversation.get(recipientId.toString());
+      const recipientSocketId = onlineUsers.get(recipientId.toString());
 
+      console.log("onlineUserSocketId", onlineUserSocketId);
+      console.log("onlineSenderSocketId", onlineUsers);
+      console.log("recipientSocketId", joinConversation);
+      // Emit fetchAPI event to both sender and recipient
+      // This is to notify them to fetch the latest messages
+      // You can customize this part based on your application's logic
+      if (recipientSocketId) {
+        console.log("recipientSocketId", recipientSocketId);
+      }
       if (onlineUserSocketId) {
         io.to(onlineUserSocketId).emit("fetchAPI", {
           message: "fetch message",
         });
+      } else {
+        // If the recipient is not online, you might want to handle this case
+        console.log(
+          `User with ID ${recipientId} is not online. No socket connection found.`
+        );
       }
       if (onlineSenderSocketId) {
         io.to(onlineSenderSocketId).emit("fetchAPI", {
           message: "fetch message",
         });
+      } else {
+        // If the sender is not online, you might want to handle this case
+        console.log(
+          `User with ID ${senderId} is not online. No socket connection found.`
+        );
       }
 
       if (recipientSocketId) {
-        console.log("recipientSocketId", recipientSocketId);
+        console.log("onlineUserSocketId", recipientSocketId);
         io.to(recipientSocketId).emit("message", newMessage);
+      } else {
+        // If the recipient is not in a conversation, you might want to handle this case
+        console.log(
+          `Recipient with ID ${recipientId} is not in a conversation. No socket connection found.`
+        );
       }
-
-      // Emit the message to the socket
-      // socket.emit("message", newMessage);
       return res.status(200).json({
         message: "Message sent successfully",
         status: 200,
@@ -255,24 +279,85 @@ export const fetchConversationId = async (req, res) => {
   }
 };
 
+// export const fetchAllConversations = async (req, res) => {
+//   const { userId } = req.params;
+
+//   try {
+//     const conversations = await ConversationModel.find({
+//       participants: { $all: [userId] },
+//     })
+//       .populate(
+//         "participants",
+//         "_id name email profileImage phone fName lName mName gender"
+//       )
+//       .populate("productTypeId");
+
+//     if (!conversations || conversations.length === 0) {
+//       return res.status(404).json({ message: "Conversations not found" });
+//     }
+
+//     // Enhance each conversation with last message and unread count
+//     const enhancedConversations = await Promise.all(
+//       conversations.map(async (conversation) => {
+//         const lastMessage = await CommunicateModel.findOne({
+//           chatId: conversation._id,
+//         })
+//           .populate(
+//             "senderId",
+//             "_id name email profileImage phone fName lName mName gender"
+//           )
+//           .sort({ createdAt: -1 })
+//           .lean();
+
+//         const unreadCount = await CommunicateModel.countDocuments({
+//           chatId: conversation._id,
+//           senderId: { $ne: userId }, // not sent by current user
+//           status: { $ne: "read" },
+//         });
+
+//         return {
+//           ...conversation.toObject(),
+//           lastMessage,
+//           unreadCount,
+//         };
+//       })
+//     );
+
+//     res.status(200).json({
+//       message: "Conversations fetched successfully",
+//       status: 200,
+//       data: enhancedConversations,
+//     });
+//   } catch (error) {
+//     console.error("Error fetching conversations:", error);
+//     res.status(500).json({ message: "Internal server error", error });
+//   }
+// };
+
+
 export const fetchAllConversations = async (req, res) => {
-  const { userId } = req.params;
+  const { userId } = req.params; // current user
 
   try {
+    /* 1️⃣  Filter: exclude conversations soft‑deleted by this user */
     const conversations = await ConversationModel.find({
-      participants: { $all: [userId] },
+      participants: { $all: [userId] }, // user is a participant
+      deletedBy: { $ne: userId }, // <-- NOT deleted by this user
     })
       .populate(
         "participants",
         "_id name email profileImage phone fName lName mName gender"
       )
       .populate("productTypeId");
-
-    if (!conversations || conversations.length === 0) {
-      return res.status(404).json({ message: "Conversations not found" });
+    console.log("conversations", conversations);
+    
+    if (!conversations.length) {
+      return res
+        .status(404)
+        .json({ message: "Conversations not found", status: 404 });
     }
 
-    // Enhance each conversation with last message and unread count
+    /* 2️⃣  Enhance with lastMessage + unreadCount as before */
     const enhancedConversations = await Promise.all(
       conversations.map(async (conversation) => {
         const lastMessage = await CommunicateModel.findOne({
@@ -287,7 +372,7 @@ export const fetchAllConversations = async (req, res) => {
 
         const unreadCount = await CommunicateModel.countDocuments({
           chatId: conversation._id,
-          senderId: { $ne: userId }, // not sent by current user
+          senderId: { $ne: userId }, // not current user
           status: { $ne: "read" },
         });
 
@@ -299,14 +384,16 @@ export const fetchAllConversations = async (req, res) => {
       })
     );
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "Conversations fetched successfully",
       status: 200,
       data: enhancedConversations,
     });
   } catch (error) {
     console.error("Error fetching conversations:", error);
-    res.status(500).json({ message: "Internal server error", error });
+    return res
+      .status(500)
+      .json({ message: "Internal server error", error, status: 500 });
   }
 };
 
@@ -352,7 +439,6 @@ export const updateMessageStatus = async (messageId) => {
         message: "Message not found",
         error: "Message not found",
       });
-    
     }
     io.emit("messageDelivered", {
       message: "Message status updated successfully",
@@ -404,7 +490,7 @@ export const updateAllMessagesStatus = async (req, res) => {
   }
 };
 
-//unread message count 
+//unread message count
 export const getUnreadMessageCount = async (req, res) => {
   const { userId } = req.body;
 
@@ -426,6 +512,141 @@ export const getUnreadMessageCount = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching unread message count:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// sent image message
+export const sendImageMessage = async (req, res) => {
+  try {
+    const { chatId, senderId, productId, type, content, metaData, status } =
+      req.body;
+    const { fileName, fileSize, mimeType } = metaData;
+
+    if (
+      !chatId ||
+      !senderId ||
+      !productId ||
+      !type ||
+      !content ||
+      !metaData ||
+      !status
+    ) {
+      // return array of missing field
+      const missingFields = [];
+      if (!chatId) missingFields.push("chatId");
+      if (!senderId) missingFields.push("senderId");
+      if (!productId) missingFields.push("productId");
+      if (!type) missingFields.push("type");
+      if (!content) missingFields.push("content");
+      if (!metaData) missingFields.push("metaData");
+
+      if (metaData) {
+        if (!fileName) missingFields.push("metaData.fileName");
+        if (!fileSize) missingFields.push("metaData.fileSize");
+        if (!mimeType) missingFields.push("metaData.mimeType");
+      }
+      if (!status) missingFields.push("status");
+      return res.status(400).json({
+        message: "Missing required fields",
+        missingFields,
+      });
+    }
+
+    const imageURL = saveBase64Image(
+      content,
+      `chat/images/${senderId}`,
+      fileName
+    );
+    if (!imageURL) {
+      return res.status(500).json({ message: "Failed to save image" });
+    }
+    const imageName = imageURL.split("/").pop();
+    const newMessage = await CommunicateModel.create({
+      chatId,
+      senderId,
+      productId,
+      type,
+      content: imageURL, // Store the URL of the saved image
+      metaData: {
+        imageName,
+        fileSize,
+        mimeType,
+      },
+      status,
+    });
+
+    // Update the conversation with the new message
+    await newMessage.save();
+    // Populate senderId
+    await newMessage.populate("senderId");
+    if (!newMessage) {
+      return res.status(404).json({ message: "Conversation not found" });
+    }
+    // Identify recipient (the other participant)
+    const conversation = await ConversationModel.findById(chatId);
+    const recipientId = conversation.participants.find(
+      (id) => id.toString() !== senderId
+    );
+    console.log("recipientId", recipientId);
+    const onlineUserSocketId = onlineUsers.get(recipientId.toString());
+    const onlineSenderSocketId = onlineUsers.get(senderId.toString());
+    const recipientSocketId = joinConversation.get(recipientId.toString());
+    if (onlineUserSocketId) {
+      io.to(onlineUserSocketId).emit("fetchAPI", {
+        message: "fetch message",
+      });
+    }
+    if (onlineSenderSocketId) {
+      io.to(onlineSenderSocketId).emit("fetchAPI", {
+        message: "fetch message",
+      });
+    }
+    if (recipientSocketId) {
+      console.log("recipientSocketId", recipientSocketId);
+      io.to(recipientSocketId).emit("message", newMessage);
+    }
+    // Emit the message to the socket
+    // socket.emit("message", newMessage);
+    res.status(200).json({
+      message: "Image message sent successfully",
+      status: 200,
+      data: newMessage,
+    });
+  } catch (error) {
+    console.error("Error sending image message:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+//conversation delete for user
+
+export const deleteConversationForUser = async (req, res) => {
+  const { conversationId } = req.params;
+  const userId = req.userId || req.body.userId; // auth middleware से आया हो
+
+  try {
+    const conv = await ConversationModel.findById(conversationId);
+    if (!conv) {
+      return res.status(404).json({ message: "Conversation not found" });
+    }
+
+    // participatory check
+    if (!conv.participants.map((id) => id.toString()).includes(userId)) {
+      return res.status(403).json({ message: "Not your conversation" });
+    }
+
+    // already deleted?
+    if (conv.deletedBy.includes(userId)) {
+      return res.status(200).json({ message: "Already deleted" });
+    }
+
+    conv.deletedBy.push(userId);
+    await conv.save();
+
+    return res.status(200).json({ message: "Conversation soft deleted" });
+  } catch (err) {
+    console.error("Delete conversation error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 };

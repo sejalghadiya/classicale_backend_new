@@ -1072,8 +1072,8 @@ export const getAllProducts = async (req, res) => {
     const userCategory = user?.userCategory;
 
     const categoryMap = {
-      1: ["D"],
-      2: ["E"],
+      α: ["D"],
+      β: ["E"],
       A: ["A", "B", "D", "E"],
       B: ["B", "C", "D", "E"],
     };
@@ -2516,5 +2516,59 @@ export const getProductTypesWithSubCategories = async (req, res) => {
       status: "error",
       message: "Server Error",
     });
+  }
+};
+
+//track view count product
+
+export const trackProductView = async (req, res) => {
+  try {
+    const { productId, modelName, userId } = req.body;
+
+    if (!productId || !modelName || !userId) {
+      return res
+        .status(400)
+        .json({ message: "Product ID, model name, and user ID are required" });
+    }
+
+    const Model = productModels[modelName];
+    if (!Model) {
+      return res.status(400).json({ message: "Invalid model name" });
+    }
+
+    const product = await Model.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // ✅ Skip if user is the product owner
+    if (userId === product.userId.toString()) {
+      return res.status(200).json({
+        message: "Owner's view is not tracked",
+        totalViewCount: product.view_count.length,
+      });
+    }
+
+    // ✅ Skip if user already viewed
+    if (product.view_count.some((id) => id.toString() === userId)) {
+      return res.status(200).json({
+        message: "User has already viewed this product",
+        totalViewCount: product.view_count.length,
+      });
+    }
+
+    // ✅ Add user ID to view_count
+    product.view_count.push(userId);
+    await product.save();
+
+    return res.status(200).json({
+      message: "Product view tracked successfully",
+      totalViewCount: product.view_count.length,
+    });
+  } catch (error) {
+    console.error("❌ Error in trackProductView:", error.message);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };

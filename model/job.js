@@ -15,6 +15,9 @@ const JobSchema = new mongoose.Schema(
     images: [{ type: String }],
     categories: { type: String },
     //address1: { type: [String] },
+    brand: { type: [String] },
+    addLink: { type: [String] },
+    model: { type: [String] },
     street1: { type: [String] },
     street2: { type: [String] },
     area: { type: [String] },
@@ -22,6 +25,7 @@ const JobSchema = new mongoose.Schema(
     state: { type: [String] },
     pincode: { type: [String] },
     country: { type: [String] },
+    view_count: { type: [mongoose.Schema.Types.ObjectId], ref: "user" },
     isDeleted: {
       type: Boolean,
       default: false,
