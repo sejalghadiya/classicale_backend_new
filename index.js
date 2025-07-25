@@ -314,8 +314,8 @@ app.use("/api/otp", SendOtpRouter);
 app.use("/api/chat", CommunicateRouter);
 app.use("/api/location", LocationRouter);
 
-server.listen(PORT, () => {
-  console.log(`Server running on http://:${PORT}`);
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${PORT}`);
 });
 
 io.on("error", (error) => {
