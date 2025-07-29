@@ -314,7 +314,7 @@ app.use("/api/otp", SendOtpRouter);
 app.use("/api/chat", CommunicateRouter);
 app.use("/api/location", LocationRouter);
 
-server.listen(PORT, "0.0.0.0", () => {
+server.listen(PORT, "127.0.0.1", () => {
   console.log(`Server running on port ${PORT}`);
 });
 
