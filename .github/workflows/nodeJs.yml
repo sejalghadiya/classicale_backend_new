@@ -22,4 +22,5 @@ jobs:
 
       - name: Start server with PM2
         run: |
-          pm2 restart classical
+          pm2 restart classical --update-env
+
