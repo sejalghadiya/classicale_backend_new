@@ -6,6 +6,8 @@ import { fileURLToPath } from "url";
 // Fix __dirname for ES module
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+// root path of server
+const uploadsRoot = "/var/www/classical_uploads";
 
 // Utility to save a base64 image
 export const saveBase64Image = (base64String, folderPath, filenamePrefix) => {
@@ -22,7 +24,8 @@ export const saveBase64Image = (base64String, folderPath, filenamePrefix) => {
   const filename = `${filenamePrefix}_${Date.now()}.${imageExtension}`;
 
   // Go to root -> public -> folderPath (like profileImages or aadharcardImages)
-  const fullFolderPath = path.join(__dirname, "..", "public", folderPath);
+  // const fullFolderPath = path.join(__dirname, "..", "public", folderPath);
+  const fullFolderPath = path.join(uploadsRoot, folderPath);
 
   if (!fs.existsSync(fullFolderPath)) {
     fs.mkdirSync(fullFolderPath, { recursive: true });
@@ -30,6 +33,6 @@ export const saveBase64Image = (base64String, folderPath, filenamePrefix) => {
 
   const filePath = path.join(fullFolderPath, filename);
   fs.writeFileSync(filePath, buffer);
-
+  //  return `/public/${folderPath}/${filename}`;
   return `/public/${folderPath}/${filename}`;
 };

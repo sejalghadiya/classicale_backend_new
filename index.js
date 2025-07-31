@@ -39,6 +39,7 @@ const io = new Server(server, {
 });
 const __filename = new URL(import.meta.url).pathname;
 const __dirname = path.dirname(__filename);
+const uploadsRoot = "/var/www/classical_uploads";
 const uri = process.env.MONGODB_URL;
 await mongoose
   .connect(uri, {})
@@ -83,9 +84,9 @@ async function createAdminIfNotExists() {
   }
 }
 
-app.use("/public", express.static(path.join(__dirname, "public")));
+app.use("/public", express.static(path.join(uploadsRoot, "public")));
 
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(uploadsRoot, "public")));
 app.use("/api/products", ProductRouter);
 app.use("/api/admin", AdminRouter);
 app.use("/api/user", UserRouter);
