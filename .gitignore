@@ -135,3 +135,29 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# public directory for static assets
+# Remove or comment out this line since we want to track directories
+# public/
+
+# Ignore specific file types in public directories
+public/**/*.jpg
+public/**/*.jpeg
+public/**/*.png
+public/**/*.HEIC
+public/**/*.pdf
+
+# Specific public directories with ignored file types
+**/aadhaarCardImage/**/*.{jpg,jpeg,png,HEIC,pdf}
+**/aadhaarCardImage1/**/*.{jpg,jpeg,png,HEIC,pdf}
+**/aadhaarCardImage2/**/*.{jpg,jpeg,png,HEIC,pdf}
+**/chat/images/**/*.{jpg,jpeg,png,HEIC,pdf}
+**/images/**/*.{jpg,jpeg,png,HEIC,pdf}
+**/pdfs/**/*.{jpg,jpeg,png,HEIC,pdf}
+**/productImages/**/*.{jpg,jpeg,png,HEIC,pdf}
+**/profileImages/**/*.{jpg,jpeg,png,HEIC,pdf}
+**/ReportProductImages/**/*.{jpg,jpeg,png,HEIC,pdf}
+
+# Don't ignore .public files and .gitkeep files
+!**/.public
+!**/.gitkeep
