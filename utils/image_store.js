@@ -25,7 +25,12 @@ export const saveBase64Image = (base64String, folderPath, filenamePrefix) => {
 
   // Go to root -> public -> folderPath (like profileImages or aadharcardImages)
   // const fullFolderPath = path.join(__dirname, "..", "public", folderPath);
-  const fullFolderPath = path.join(uploadsRoot, folderPath);
+  const fullFolderPath = path.join(
+    __dirname,
+    "..",
+    "/var/www/classical_uploads",
+    folderPath
+  );
 
   if (!fs.existsSync(fullFolderPath)) {
     fs.mkdirSync(fullFolderPath, { recursive: true });
