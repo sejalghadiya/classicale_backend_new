@@ -20,7 +20,8 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Start server with PM2
+      - name: Kill process on port 3001
         run: |
+          fuser -k 3001/tcp || true
           pm2 restart classical --update-env
 
