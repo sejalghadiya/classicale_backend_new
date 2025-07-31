@@ -459,10 +459,26 @@ export const deleteProduct = async (req, res) => {
 export const getUserCategory = async (req, res) => {
   try {
     const userCategories = await UserModel.distinct("userCategory");
-
+    const userCountByCategory = await UserModel.aggregate([
+      {
+        $group: {
+          _id: "$userCategory",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+    const userCategoriesWithCount = userCategories.map((category) => {
+      const countObj = userCountByCategory.find(
+        (item) => item._id === category
+      );
+      return {
+        category,
+        count: countObj ? countObj.count : 0,
+      };
+    });
     return res.status(200).json({
       message: "User categories fetched successfully",
-      userCategories,
+      userCategories: userCategoriesWithCount,
     });
   } catch (error) {
     console.error("❌ Server Error:", error.message);
@@ -1333,7 +1349,7 @@ export const getUserListByAssignPin = async (req, res) => {
 
     const users = await UserModel.find({ assignedPins: pin })
       .select(
-        "fName lName mName email phone profileImage state district country area"
+        "fName lName mName email phone profileImage state city country area"
       )
       .populate("assignedPins");
 

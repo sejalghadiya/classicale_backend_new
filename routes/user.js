@@ -15,6 +15,7 @@ import {
   getUserByID,
   repostProducts,
   createRating,
+  reportChat,
 } from "../controller/user.js";
 import { upload } from "../upload.js";
 import authenticateUser from "../auth/middle.js";
@@ -47,8 +48,8 @@ router.get(
 );
 
 router.post("/add_rating", authenticateUser, createRating);
-
-
+  
+router.post("/report_chat", reportChat);
 
 export default router;
 

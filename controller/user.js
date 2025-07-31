@@ -862,7 +862,6 @@ export const createRating = async (req, res) => {
 };
 
 
-
 export const getAllRatings = async (req, res) => {
   try {
     const ratings = await RatingModel.find()
@@ -873,5 +872,49 @@ export const getAllRatings = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ msg: "Server error" });
+  }
+};
+
+export const reportChat = async (req, res) => {
+  try {
+    const {
+      reportedBy,
+      reportedUser,
+      conversationId,
+      message,
+      description,
+      image,
+    } = req.body;
+
+    if (!reportedBy || !reportedUser || !description) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    let imagePath = "";
+
+    if (image && image.startsWith("data:image")) {
+      imagePath = saveBase64Image(image, "ChatReportImages", "chat_report");
+    }
+
+    const chatReport = new ChatReport({
+      reportedBy,
+      reportedUser,
+      conversationId,
+      message,
+      description,
+      image: imagePath,
+    });
+
+    await chatReport.save();
+
+    return res.status(200).json({
+      message: "Chat reported successfully",
+      report: chatReport,
+    });
+  } catch (error) {
+    console.error("Error reporting chat:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
