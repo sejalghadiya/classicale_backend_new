@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
+
 // Fix __dirname for ES module
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,12 +26,8 @@ export const saveBase64Image = (base64String, folderPath, filenamePrefix) => {
 
   // Go to root -> public -> folderPath (like profileImages or aadharcardImages)
   // const fullFolderPath = path.join(__dirname, "..", "public", folderPath);
-  const fullFolderPath = path.join(
-    __dirname,
-    "..",
-    "/var/www/classical_uploads",
-    folderPath
-  );
+  // Store directly in the external uploads directory
+  const fullFolderPath = path.join(uploadsRoot, "public", folderPath);
 
   if (!fs.existsSync(fullFolderPath)) {
     fs.mkdirSync(fullFolderPath, { recursive: true });
