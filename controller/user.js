@@ -396,7 +396,7 @@ export const updateUser = async (req, res) => {
     }
 
     if (user.updateCount >= 3) {
-      return res.status(200).json({
+      return res.status(403).json({
         message:
           "Your profile has been updated more than 3 times. Please contact customer support.",
       });
