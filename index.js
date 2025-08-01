@@ -93,7 +93,20 @@ app.use("/api/user", UserRouter);
 app.use("/api/otp", SendOtpRouter);
 app.use("/api/chat", CommunicateRouter);
 app.use("/api/location", LocationRouter);
-
+app.get("/test-file-write", (req, res) => {
+  try {
+    const testPath =
+      "/var/www/classical_uploads/public/profileImages/test-from-app.txt";
+    fs.writeFileSync(testPath, "Test content");
+    res.send(`File created successfully at ${testPath}`);
+  } catch (error) {
+    res.status(500).send({
+      message: "File write error",
+      error: error.message,
+      stack: error.stack,
+    });
+  }
+});
 server.listen(PORT, "127.0.0.1", () => {
   console.log(`Server running on port ${PORT}`);
 });
