@@ -21,7 +21,7 @@ import fs from "fs";
 import { UserModel } from "./model/user.js";
 import { log } from "console";
 import socketInit from "./socket.js";
-dotenv.config();
+dotenv.config({ path: "/var/www/backend/classicale_backend.env" });
 
 const app = express();
 app.use(express.json({ limit: "10mb" })); // or even higher like '50mb'

@@ -21,7 +21,7 @@ import { fileURLToPath } from "url";
 import { saveBase64Image } from "../utils/image_store.js";
 import { all } from "axios";
 import { log } from "console";
-dotenv.config();
+dotenv.config({ path: "/var/www/backend/classicale_backend.env" });
 // Fix __dirname for ES module
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

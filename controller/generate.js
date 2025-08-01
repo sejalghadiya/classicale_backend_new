@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 
-dotenv.config();
+dotenv.config({ path: "/var/www/backend/classicale_backend.env" });
 
 const generateToken = (_id, email) => {
   const jwtSecret = process.env.classicalProject;

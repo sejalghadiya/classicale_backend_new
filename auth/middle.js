@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import { UserModel } from "../model/user.js";
 import AdminModel from "../model/admin.js";
 
-dotenv.config();
+dotenv.config({ path: "/var/www/backend/classicale_backend.env" });
 
 export const authenticateUser = async (req, res, next) => {
   try {
