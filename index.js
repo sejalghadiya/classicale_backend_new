@@ -80,13 +80,16 @@ async function createAdminIfNotExists() {
     console.error("Error creating or updating admin user:", error);
   }
 }
+
 if (config.nodeEnv === "dev") {
   app.use("/public", express.static(path.join(__dirname, "..", "public")));
 } else {
+  console.log(
+    "Serving static files from:",
+    path.join(config.uploads.root, "public")
+  );
   app.use("/public", express.static(path.join(config.uploads.root, "public")));
 }
-
-
 
 app.use("/api/products", ProductRouter);
 app.use("/api/admin", AdminRouter);

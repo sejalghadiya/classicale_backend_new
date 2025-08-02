@@ -36,7 +36,7 @@ jobs:
             pm2 restart classical
           else
             echo "Starting new PM2 process..."
-            pm2 start index.js --name classical
+            pm2 start ecosystem.config.js --env production
           fi
 
       - name: Save PM2 state (optional)
