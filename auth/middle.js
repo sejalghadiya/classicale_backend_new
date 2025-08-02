@@ -1,9 +1,8 @@
 import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
 import { UserModel } from "../model/user.js";
 import AdminModel from "../model/admin.js";
+import config from "../utils/config.js";
 
-dotenv.config({ path: "/var/www/backend/classicale_backend.env" });
 
 export const authenticateUser = async (req, res, next) => {
   try {
@@ -21,7 +20,7 @@ export const authenticateUser = async (req, res, next) => {
     const tokenWithoutBearer = token.split(" ")[1];
     // console.log("Token without 'Bearer':", tokenWithoutBearer);
 
-    const secretKey = process.env.JWT_SECRET;
+    const secretKey = config.jwt.secret;
 
     if (!secretKey) {
       console.error("❌ JWT_SECRET is not defined in .env file!");
@@ -88,7 +87,7 @@ export const authenticateAdmin = async (req, res, next) => {
     }
 
     const tokenWithoutBearer = token.split(" ")[1];
-    const secretKey = process.env.JWT_SECRET;
+    const secretKey = config.jwt.secret;
 
     const verifiedToken = jwt.verify(tokenWithoutBearer, secretKey);
 

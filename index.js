@@ -2,7 +2,6 @@ console.log("Hello world!");
 import { ConditionModel } from "./model/conditon.js";
 import express from "express";
 import mongoose from "mongoose";
-import dotenv from "dotenv";
 import config from "./utils/config.js";
 import bcrypt from "bcryptjs";
 import http from "http";
@@ -22,14 +21,13 @@ import fs from "fs";
 import { UserModel } from "./model/user.js";
 import { log } from "console";
 import socketInit from "./socket.js";
-dotenv.config();
 
 const app = express();
 app.use(express.json({ limit: "10mb" })); // or even higher like '50mb'
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 app.use(cors());
-const PORT = process.env.PORT || 3000;
+const PORT = config.port;
 const server = http.createServer(app);
 // Create Socket.IO server
 const io = new Server(server, {
@@ -40,10 +38,8 @@ const io = new Server(server, {
 });
 const __filename = new URL(import.meta.url).pathname;
 const __dirname = path.dirname(__filename);
-const uploadsRoot = "/var/www/classical_uploads";
-const uri = process.env.MONGODB_URL;
 await mongoose
-  .connect(uri, {})
+  .connect(config.database.url)
   .then(() => {
     console.log("Connected to MongoDB Atlas!");
   })
@@ -84,34 +80,21 @@ async function createAdminIfNotExists() {
     console.error("Error creating or updating admin user:", error);
   }
 }
-if (config.NODE_ENV === "dev") {
+if (config.nodeEnv === "dev") {
   // Serve static files from the public directory in development
   app.use("/public", express.static(path.join(__dirname, "..", "public")));
 } else {
   app.use("/public", express.static(path.join(config.uploads.root, "public")));
 }
 
-app.use(express.static(path.join(uploadsRoot, "public")));
+app.use(express.static(path.join(config.uploads.root, "public")));
 app.use("/api/products", ProductRouter);
 app.use("/api/admin", AdminRouter);
 app.use("/api/user", UserRouter);
 app.use("/api/otp", SendOtpRouter);
 app.use("/api/chat", CommunicateRouter);
 app.use("/api/location", LocationRouter);
-app.get("/test-file-write", (req, res) => {
-  try {
-    const testPath =
-      "/var/www/classical_uploads/public/profileImages/test-from-app.txt";
-    fs.writeFileSync(testPath, "Test content");
-    res.send(`File created successfully at ${testPath}`);
-  } catch (error) {
-    res.status(500).send({
-      message: "File write error",
-      error: error.message,
-      stack: error.stack,
-    });
-  }
-});
+
 server.listen(PORT, "127.0.0.1", () => {
   console.log(`Server running on port ${PORT}`);
 });

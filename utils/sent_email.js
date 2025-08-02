@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import config from "./config";
 export const sendEmail = async (email, subject, text) => {
   try {
     const transporter = nodemailer.createTransport({
@@ -7,14 +8,14 @@ export const sendEmail = async (email, subject, text) => {
       port: 465,
       secure: true, // Use SSL
       auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
+        user: config.email.user,
+        pass: config.email.pass,
       },
     });
 
     // Email options
     const mailOptions = {
-      from: `"Support Team" <${process.env.EMAIL_USER}>`,
+      from: `"Support Team" <${config.email.user}>`,
       to: email,
       subject: subject,
       text: text,

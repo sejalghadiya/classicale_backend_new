@@ -25,7 +25,7 @@ export const saveBase64Image = (base64String, folderPath, filenamePrefix) => {
 
     const filename = `${filenamePrefix}_${Date.now()}.${imageExtension}`;
     var fullFolderPath;
-    if (config.NODE_ENV === "dev") {
+    if (config.nodeEnv === "dev") {
       // Go to root -> public -> folderPath (like profileImages or aadharcardImages)
       fullFolderPath = path.join(__dirname, "..", "public", folderPath);
     } else {

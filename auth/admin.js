@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import Admin from "../model/admin.js"; // Adjust the path if needed
+import config from "../utils/config.js";
 
 // Middleware to authenticate JWT
 export const authenticateToken11 = async (req, res, next) => {
@@ -11,7 +12,7 @@ export const authenticateToken11 = async (req, res, next) => {
 
   jwt.verify(
     token,
-    process.env.JWT_SECRET,
+    config.jwt.secret,
     async (err, user) => {
       if (err) return res.status(403).json({ message: "Forbidden" });
 
@@ -35,7 +36,7 @@ export const authenticateToken = async (req, res, next) => {
 
   jwt.verify(
     token,
-    process.env.JWT_SECRET,
+    config.jwt.secret,
     async (err, user) => {
       if (err) return res.status(403).json({ message: "Forbidden" });
 

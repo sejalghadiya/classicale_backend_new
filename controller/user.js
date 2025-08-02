@@ -10,6 +10,7 @@ import { ProductTypeModel } from "../model/product_type.js";
 import { saveBase64Image } from "../utils/image_store.js";
 import { ReportProductModel } from "../model/reoprt_product.js";
 import { RatingModel } from "../model/rating.js";
+import config from "../utils/config.js";
 
 const generateOtp = (firstName, lastName) => {
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -271,8 +272,8 @@ export const userLogin = async (req, res) => {
     // ✅ Generate Token
     const token = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "60d" }
+      config.jwt.secret,
+      { expiresIn: config.jwt.expiresIn }
     );
 
     return res.status(200).json({
@@ -544,8 +545,8 @@ export const verifyPin = async (req, res) => {
     // ✅ Generate Token
     const token = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "60d" }
+      config.jwt.secret,
+      { expiresIn: config.jwt.expiresIn }
     );
 
     return res.status(200).json({
@@ -627,8 +628,8 @@ export const verifyOtp = async (req, res) => {
     // ✅ Generate Token
     const token = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "60d" }
+      config.jwt.secret,
+      { expiresIn: config.jwt.expiresIn }
     );
 
     // Send the user details in the response

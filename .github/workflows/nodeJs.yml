@@ -20,13 +20,13 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # - name: Ensure .env is linked
-      #   run: |
-      #     if [ -f /var/www/backend/classicale_backend.env ]; then
-      #       ln -sf /var/www/backend/classicale_backend.env .env
-      #     else
-      #       echo "WARNING: /var/www/backend/classicale_backend.env not found!"
-      #     fi
+      - name: Ensure .env is linked
+        run: |
+          if [ -f /var/www/backend/classicale_backend.env ]; then
+            ln -sf /var/www/backend/classicale_backend.env .env
+          else
+            echo "WARNING: /var/www/backend/classicale_backend.env not found!"
+          fi
 
       - name: Restart PM2 process safely
         run: |

@@ -1,15 +1,12 @@
 import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
-
-dotenv.config({ path: "/var/www/backend/classicale_backend.env" });
+import config from "../utils/config";
 
 const generateToken = (_id, email) => {
-  const jwtSecret = process.env.classicalProject;
-  // return jwt.sign({ userId, firstName }, jwtSecret, { expiresIn: "1h" });
+  const jwtSecret = config.jwt.secret;
   const token = jwt.sign(
-    { id: user._id, email: user.email }, // use userId here
-    "ClassicalProject",
-    { expiresIn: "1h" }
+    { id: _id, email: email }, // use userId here
+    jwtSecret,
+    { expiresIn: config.jwt.expiresIn }
   );
   try {
     const decoded = jwt.verify(token, jwtSecret);
