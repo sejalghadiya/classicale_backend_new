@@ -83,11 +83,13 @@ async function createAdminIfNotExists() {
 if (config.nodeEnv === "dev") {
   // Serve static files from the public directory in development
   app.use("/public", express.static(path.join(__dirname, "..", "public")));
+  app.use(express.static(path.join(__dirname, "..", "public")));
 } else {
   app.use("/public", express.static(path.join(config.uploads.root, "public")));
+  app.use(express.static(path.join(config.uploads.root, "public")));
 }
 
-app.use(express.static(path.join(config.uploads.root, "public")));
+
 app.use("/api/products", ProductRouter);
 app.use("/api/admin", AdminRouter);
 app.use("/api/user", UserRouter);
