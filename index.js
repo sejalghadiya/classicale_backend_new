@@ -3,6 +3,7 @@ import { ConditionModel } from "./model/conditon.js";
 import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import config from "./utils/config.js";
 import bcrypt from "bcryptjs";
 import http from "http";
 import { Server } from "socket.io";
@@ -21,7 +22,7 @@ import fs from "fs";
 import { UserModel } from "./model/user.js";
 import { log } from "console";
 import socketInit from "./socket.js";
-dotenv.config({ path: "/var/www/backend/classicale_backend.env" });
+dotenv.config();
 
 const app = express();
 app.use(express.json({ limit: "10mb" })); // or even higher like '50mb'
@@ -83,8 +84,12 @@ async function createAdminIfNotExists() {
     console.error("Error creating or updating admin user:", error);
   }
 }
-
-app.use("/public", express.static(path.join(uploadsRoot, "public")));
+if (config.NODE_ENV === "dev") {
+  // Serve static files from the public directory in development
+  app.use("/public", express.static(path.join(__dirname, "..", "public")));
+} else {
+  app.use("/public", express.static(path.join(config.uploads.root, "public")));
+}
 
 app.use(express.static(path.join(uploadsRoot, "public")));
 app.use("/api/products", ProductRouter);
