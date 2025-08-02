@@ -33,10 +33,11 @@ jobs:
           pm2 describe classical > /dev/null
           if [ $? -eq 0 ]; then
             echo "Restarting existing PM2 process..."
-            pm2 restart classical
+            pm2 stop classical
+            pm2 start ecosystem.config.cjs --env production
           else
             echo "Starting new PM2 process..."
-            pm2 start ecosystem.config.js --env production
+            pm2 start ecosystem.config.cjs --env production
           fi
 
       - name: Save PM2 state (optional)
