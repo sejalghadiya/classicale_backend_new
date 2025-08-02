@@ -18,6 +18,7 @@ import bcrypt from "bcryptjs"; // Import bcrypt for password hashing
 import jwt from "jsonwebtoken"; // Import jsonwebtoken for token generation
 import { sendEmail } from "../utils/sent_email.js"; // Import the sendEmail function
 import { ReportProductModel } from "../model/reoprt_product.js";
+import config from "../utils/config.js";
 
 export const adminLogin = async (req, res) => {
   const { email, password } = req.body;
