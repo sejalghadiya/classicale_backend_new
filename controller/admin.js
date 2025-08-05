@@ -712,7 +712,11 @@ export const userAccess = async (req, res) => {
     user.userCategory;
     if (user.userCategory === "A") {
       console.log("User Category A");
-
+      if (user.assignedPins) {
+        return res.status(400).json({
+          message: "User already has an assigned pin",
+        });
+      }
       return sendPinAccess(req, res);
     }
     if (user.userCategory === "B") {
@@ -721,6 +725,11 @@ export const userAccess = async (req, res) => {
     }
     if (user.userCategory === "α") {
       console.log("User Category α");
+      if (user.assignedPins) {
+        return res.status(400).json({
+          message: "User already has an assigned pin",
+        });
+      }
       return sendPinAccess(req, res);
     }
     if (user.userCategory === "β") {
