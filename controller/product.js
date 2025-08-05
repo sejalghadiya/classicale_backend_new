@@ -853,7 +853,7 @@ export const addOtherProduct = async (req, res) => {
   }
 };
 
-const MAX_RADIUS = 15 * 1000;
+const MAX_RADIUS = 150 * 1000;
 const STEP_RADIUS = 5 * 1000;
 const MIN_FOUND_PRODUCTS = 1;
 
