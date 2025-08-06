@@ -80,8 +80,25 @@ async function createAdminIfNotExists() {
     console.error("Error creating or updating admin user:", error);
   }
 }
+app.use(
+  "/public",
+  (req, res, next) => {
+    console.log("Static request:", req.url);
+    const filePath = path.join(
+      __dirname,
+      "..",
+      "public",
+      "productImages",
+      "product_1754450608094.jpeg"
+    );
+    console.log("File exists:", fs.existsSync(filePath));
+    next();
+  },
+  express.static(path.join(__dirname, "..", "public"))
+);
 
 if (config.nodeEnv === "dev") {
+  console.log("Serving static files from:", path.join(__dirname, "public"));
   app.use("/public", express.static(path.join(__dirname, "..", "public")));
 } else {
   console.log(
@@ -98,9 +115,15 @@ app.use("/api/otp", SendOtpRouter);
 app.use("/api/chat", CommunicateRouter);
 app.use("/api/location", LocationRouter);
 
-server.listen(PORT, "127.0.0.1", () => {
-  console.log(`Server running on port ${PORT}`);
-});
+if (config.nodeEnv === "dev") {
+  server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+} else {
+  server.listen(PORT, "127.0.0.1", () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
 
 io.on("error", (error) => {
   console.log("Socket.IO global error:", error);

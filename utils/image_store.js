@@ -32,6 +32,8 @@ export const saveBase64Image = (base64String, folderPath, filenamePrefix) => {
       // Store directly in the external uploads directory
       fullFolderPath = path.join(config.uploads.root, "public", folderPath);
     }
+    console.log(`Saving image to: ${fullFolderPath}/${filename}`);
+    
     if (!fs.existsSync(fullFolderPath)) {
       throw new Error(`Folder path does not exist: ${fullFolderPath}`);
     }

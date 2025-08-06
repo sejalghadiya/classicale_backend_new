@@ -250,7 +250,7 @@ export const userLogin = async (req, res) => {
       verificationType = "OTP";
       const otp = generateOtp(user.fName.last, user.lName.last);
       user.otp = otp;
-      user.otpExpire = Date.now() + 1.5 * 60 * 1000; // 1 minute 30 seconds
+      user.otpExpire = Date.now() + 1.5 * 120 * 1000; // 2 minute 30 seconds
       await user.save();
       await sendEmail(email, "Your OTP Code", `Your OTP is: ${otp}`);
     }
@@ -267,7 +267,7 @@ export const userLogin = async (req, res) => {
       verificationType = "OTP";
       const otp = generateOtp(user.fName, user.lName);
       user.otp = otp;
-      user.otpExpire = Date.now() + 1.5 * 60 * 1000; // 1 minute 30 seconds
+      user.otpExpire = Date.now() + 1.5 * 120 * 1000; // 2 minute 30 seconds
       await user.save();
       await sendEmail(email, "Your OTP Code", `Your OTP is: ${otp}`);
     }
@@ -677,11 +677,14 @@ export const verifyOtp = async (req, res) => {
 };
 
 export const createNewPassword = async (req, res) => {
-  const { email, password } = req.body; // New password from user
+  const {category, email, password } = req.body; // New password from user
 
   try {
+    if (!email || !password || !category) {
+      return res.status(400).json({ message: "Email, password, and userCategory are required" });
+    }
     // Find user by email
-    const user = await UserModel.findOne({ email });
+    const user = await UserModel.findOne({ email, userCategory: category });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }

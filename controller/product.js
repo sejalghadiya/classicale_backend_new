@@ -86,7 +86,6 @@ export const addProduct_remove = async (req, res) => {
   }
 };
 
-
 export const showProduct = async (req, res) => {
   try {
     // Query parameters ko decode karein
@@ -188,7 +187,6 @@ export const showUserAddProduct = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
 
 export const getProductsWithUserDetails = async (req, res) => {
   try {
@@ -896,7 +894,7 @@ export const getAllProducts = async (req, res) => {
           path: "subProductType",
           select: "-modelName -productType",
         });
-        console.log(`Fetching products from model: ${query}`);
+        // console.log(`Fetching products from model: ${query}`);
 
         if ("userId" in Model.schema.paths) {
           query = query.populate({
@@ -1164,7 +1162,6 @@ export const getProductsByUser = async (req, res) => {
       .json({ message: "Server error", error: error.message });
   }
 };
-
 
 const searchableFields = [
   "adTitle",
@@ -1671,7 +1668,6 @@ export const getSubProductType = async (req, res) => {
       .json({ message: "Error fetching sub product types", error });
   }
 };
-
 
 export const getProductTypesWithSubCategories = async (req, res) => {
   try {
