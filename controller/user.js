@@ -677,11 +677,13 @@ export const verifyOtp = async (req, res) => {
 };
 
 export const createNewPassword = async (req, res) => {
-  const {category, email, password } = req.body; // New password from user
+  const { category, email, password } = req.body; // New password from user
 
   try {
     if (!email || !password || !category) {
-      return res.status(400).json({ message: "Email, password, and userCategory are required" });
+      return res
+        .status(400)
+        .json({ message: "Email, password, and userCategory are required" });
     }
     // Find user by email
     const user = await UserModel.findOne({ email, userCategory: category });
@@ -868,12 +870,11 @@ export const createRating = async (req, res) => {
   }
 };
 
-
 export const getAllRatings = async (req, res) => {
   try {
     const ratings = await RatingModel.find()
       .sort({ createdAt: -1 }) // latest first
-      .populate("user");       // ✅ Populate full user object
+      .populate("user"); // ✅ Populate full user object
 
     res.status(200).json(ratings);
   } catch (err) {

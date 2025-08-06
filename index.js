@@ -80,26 +80,10 @@ async function createAdminIfNotExists() {
     console.error("Error creating or updating admin user:", error);
   }
 }
-app.use(
-  "/public",
-  (req, res, next) => {
-    console.log("Static request:", req.url);
-    const filePath = path.join(
-      __dirname,
-      "..",
-      "public",
-      "productImages",
-      "product_1754450608094.jpeg"
-    );
-    console.log("File exists:", fs.existsSync(filePath));
-    next();
-  },
-  express.static(path.join(__dirname, "..", "public"))
-);
 
 if (config.nodeEnv === "dev") {
   console.log("Serving static files from:", path.join(__dirname, "public"));
-  app.use("/public", express.static(path.join(__dirname, "..", "public")));
+  app.use("/public", express.static(path.join(__dirname, "public")));
 } else {
   console.log(
     "Serving static files from:",
