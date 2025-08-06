@@ -11,6 +11,7 @@ import { saveBase64Image } from "../utils/image_store.js";
 import { ReportProductModel } from "../model/reoprt_product.js";
 import { RatingModel } from "../model/rating.js";
 import config from "../utils/config.js";
+import { sendEmail } from "../utils/sent_email.js";
 
 const generateOtp = (firstName, lastName) => {
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -251,6 +252,7 @@ export const userLogin = async (req, res) => {
       user.otp = otp;
       user.otpExpire = Date.now() + 1.5 * 60 * 1000; // 1 minute 30 seconds
       await user.save();
+      await sendEmail(email, "Your OTP Code", `Your OTP is: ${otp}`);
     }
     if (user.userCategory === "α" && !user.isPinVerified) {
       requiresVerification = true;
@@ -267,6 +269,7 @@ export const userLogin = async (req, res) => {
       user.otp = otp;
       user.otpExpire = Date.now() + 1.5 * 60 * 1000; // 1 minute 30 seconds
       await user.save();
+      await sendEmail(email, "Your OTP Code", `Your OTP is: ${otp}`);
     }
 
     // ✅ Generate Token
