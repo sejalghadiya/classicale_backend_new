@@ -747,6 +747,24 @@ export const addOtherProduct = async (req, res) => {
       console.log("missing UserId", userId);
       return res.status(400).json({ message: "UserId is required" });
     }
+    // ✅ Convert type string to number
+    if (typeof data.type === "string") {
+      switch (data.type.toLowerCase()) {
+        case "nil":
+          data.type = 0;
+          break;
+        case "job":
+          data.type = 1;
+          break;
+        case "service":
+          data.type = 2;
+          break;
+        default:
+          return res.status(400).json({
+            message: "Invalid type. Must be 'nil', 'job', or 'service'",
+          });
+      }
+    }
     console.log(data.price);
     console.log(data.title);
     console.log(data.description);
