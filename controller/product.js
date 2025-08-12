@@ -20,6 +20,7 @@ import { fileURLToPath } from "url";
 import { saveBase64Image } from "../utils/image_store.js";
 import { all } from "axios";
 import { log } from "console";
+import { match } from "assert";
 // Fix __dirname for ES module
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -912,17 +913,24 @@ export const getAllProducts = async (req, res) => {
           path: "subProductType",
           select: "-modelName -productType",
         });
-        // console.log(`Fetching products from model: ${query}`);
 
         if ("userId" in Model.schema.paths) {
           query = query.populate({
             path: "userId",
             select:
-              "fName lName mName email phone profileImage state district country area",
+              "fName lName mName email phone profileImage state district country area isActive isDeleted",
+            match: { isActive: true, isDeleted: false }, // Only populate active and non-deleted users
           });
         }
 
-        const results = await query;
+        let results = await query;
+
+        // Filter out products where user is not populated (inactive or deleted)
+        // or where product is marked as deleted
+        results = results.filter((product) => {
+          return product.userId && !product.isDeleted;
+        });
+
         if (results.length > 0) {
           tempProducts[key] = results;
           totalFound += results.length;

@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const PropertySchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
-    type: { type: String, enum: ["ForRent", "ForSell"] },
+    typeFor: { type: String, enum: ["ForRent", "ForSell"] },
     bhk: {
       type: [String],
       enum: ["1", "2", "3", "4", "4+"],
