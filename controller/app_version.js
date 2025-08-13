@@ -12,9 +12,10 @@ export const createAppVersion = async (req, res) => {
     });
 
     // Validate version format
-    if (!version || !/^\d+\.\d+$/.test(version)) {
+    if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
       return res.status(400).json({
-        message: "Invalid version format. Use format like '1.0', '1.1', etc.",
+        message:
+          "Invalid version format. Use format like '1.1.0', '1.1.1', etc.",
       });
     }
 

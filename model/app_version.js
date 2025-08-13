@@ -8,10 +8,10 @@ const appVersionSchema = new mongoose.Schema(
       unique: true,
       validate: {
         validator: function (v) {
-          return /^\d+\.\d+$/.test(v); // Validates format like "1.0", "1.1", etc.
+          return /^\d+\.\d+\.\d+$/.test(v); // Validates format like "1.1.0", "1.1.1", etc.
         },
         message: (props) =>
-          `${props.value} is not a valid version number! Use format like "1.0", "1.1", etc.`,
+          `${props.value} is not a valid version number! Use format like "1.1.0", "1.1.1", etc.`,
       },
     },
     versionName: {
