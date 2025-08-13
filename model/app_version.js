@@ -39,7 +39,7 @@ const appVersionSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  } 
 );
 
-export const AppVersion = mongoose.model("AppVersion", appVersionSchema);
+export const AppVersion = mongoose.model("App_Version", appVersionSchema);
