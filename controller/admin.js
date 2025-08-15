@@ -54,33 +54,68 @@ export const adminLogin = async (req, res) => {
 };
 
 // Get product types with actual product counts
+// Get product types with actual product counts & category-wise counts
 export const getProductType = async (req, res) => {
   try {
     const productTypes = await ProductTypeModel.find();
-    const typeCountsMap = {};
+    const typeCountsMap = {}; // total counts per type
+    const categoryCountsMap = {}; // category-wise counts per type
+    const allCategoryCounts = { A: 0, B: 0, C: 0, D: 0, E: 0 }; // for "All"
 
-    // Iterate over each product model and count based on productType
+    // Iterate over each product model and count based on productType & category
     for (const Model of Object.values(productModels)) {
       const items = await Model.aggregate([
         { $match: { isDeleted: false } },
-        { $group: { _id: "$productType", count: { $sum: 1 } } },
+        {
+          $group: {
+            _id: { type: "$productType", category: "$categories" },
+            count: { $sum: 1 },
+          },
+        },
       ]);
 
       items.forEach(({ _id, count }) => {
-        if (_id) {
-          if (!typeCountsMap[_id]) {
-            typeCountsMap[_id] = 0;
+        if (_id.type) {
+          const typeId = _id.type.toString();
+          const category = _id.category || "Other";
+
+          // Total count per type
+          if (!typeCountsMap[typeId]) {
+            typeCountsMap[typeId] = 0;
           }
-          typeCountsMap[_id] += count;
+          typeCountsMap[typeId] += count;
+
+          // Category count per type
+          if (!categoryCountsMap[typeId]) {
+            categoryCountsMap[typeId] = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+          }
+          if (categoryCountsMap[typeId][category] !== undefined) {
+            categoryCountsMap[typeId][category] += count;
+          }
+
+          // Add to "All" category totals
+          if (allCategoryCounts[category] !== undefined) {
+            allCategoryCounts[category] += count;
+          }
         }
       });
     }
 
     // Merge count with product types
-    const productTypesWithCount = productTypes.map((productType) => ({
-      ...productType._doc,
-      count: typeCountsMap[productType._id?.toString()] || 0,
-    }));
+    const productTypesWithCount = productTypes.map((productType) => {
+      const typeId = productType._id?.toString();
+      return {
+        ...productType._doc,
+        count: typeCountsMap[typeId] || 0,
+        categories: categoryCountsMap[typeId] || {
+          A: 0,
+          B: 0,
+          C: 0,
+          D: 0,
+          E: 0,
+        },
+      };
+    });
 
     // Calculate total count for "All"
     const totalCount = Object.values(typeCountsMap).reduce(
@@ -97,6 +132,7 @@ export const getProductType = async (req, res) => {
         createTime: null,
         __v: 0,
         count: totalCount,
+        categories: allCategoryCounts,
       },
       ...productTypesWithCount,
     ];
