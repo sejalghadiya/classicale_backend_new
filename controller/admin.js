@@ -62,17 +62,8 @@ export const getProductType = async (req, res) => {
     // Iterate over each product model and count based on productType
     for (const Model of Object.values(productModels)) {
       const items = await Model.aggregate([
-        {
-          $match: {
-            isDeleted: false,
-          },
-        },
-        {
-          $group: {
-            _id: "$productType",
-            count: { $sum: 1 },
-          },
-        },
+        { $match: { isDeleted: false } },
+        { $group: { _id: "$productType", count: { $sum: 1 } } },
       ]);
 
       items.forEach(({ _id, count }) => {
@@ -91,9 +82,28 @@ export const getProductType = async (req, res) => {
       count: typeCountsMap[productType._id?.toString()] || 0,
     }));
 
+    // Calculate total count for "All"
+    const totalCount = Object.values(typeCountsMap).reduce(
+      (sum, c) => sum + c,
+      0
+    );
+
+    // Add the "All" option at the beginning
+    const finalData = [
+      {
+        _id: "",
+        name: "All",
+        modelName: "",
+        createTime: null,
+        __v: 0,
+        count: totalCount,
+      },
+      ...productTypesWithCount,
+    ];
+
     return res.status(200).json({
       message: "Product types fetched successfully",
-      data: productTypesWithCount,
+      data: finalData,
     });
   } catch (error) {
     console.error("Error in getProductType:", error);
@@ -125,13 +135,12 @@ export const getProductWithType = async (req, res) => {
     for (const [key, Model] of Object.entries(productModels)) {
       const modelSchemaPaths = Model.schema.paths;
 
-      const filters = { isDeleted: false }; // Removed isActive filter
-
+      const filters = { isDeleted: false };
       if (productTypeId) {
         filters.productType = productTypeId;
       }
       if (category) {
-        filters.categories = category;
+        filters.categories = category; // ✅ Only fetch needed category
       }
 
       let query = Model.find(filters)
@@ -151,16 +160,15 @@ export const getProductWithType = async (req, res) => {
 
       const results = await query;
 
+      // Add modelName
       results.forEach((product) => {
         product._doc.modelName = key;
       });
 
-      if (results.length > 0) {
-        allProducts[key] = {
-          count: results.length,
-          items: results,
-        };
-      }
+      allProducts[key] = {
+        count: results.length,
+        items: results,
+      };
     }
 
     return res.status(200).json({
