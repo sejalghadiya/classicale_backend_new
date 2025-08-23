@@ -1155,11 +1155,17 @@ export const getProductsByUser = async (req, res) => {
       return res.status(400).json({ message: "Invalid userId" });
     }
 
+    const user = await UserModel.findById(userId);
+    let userCategoryList = user.categories || [];
+
     let allUserProducts = [];
 
     for (const key in productModels) {
       const Model = productModels[key];
-      const products = await Model.find({ userId })
+      const products = await Model.find({
+        userId,
+        categories: { $in: userCategoryList },
+      })
         .populate({
           path: "productType",
         })
