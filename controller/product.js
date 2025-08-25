@@ -1150,15 +1150,19 @@ export const getProductByCategory = async (req, res) => {
 export const getProductsByUser = async (req, res) => {
   try {
     const { userId } = req.query;
+    const reqUser = req.user;
+    console.log(reqUser);
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({ message: "Invalid userId" });
     }
 
     const user = await UserModel.findById(userId);
+    console.log(user);
+
     let userCategoryList = [];
-    const userReadCategoryList = user.read || [];
-    const userWriteCategoryList = user.write || [];
+    const userReadCategoryList = reqUser.read || [];
+    const userWriteCategoryList = reqUser.write || [];
 
     userCategoryList = [...userReadCategoryList, ...userWriteCategoryList];
 
