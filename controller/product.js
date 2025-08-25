@@ -1156,9 +1156,14 @@ export const getProductsByUser = async (req, res) => {
     }
 
     const user = await UserModel.findById(userId);
-    let userCategoryList = user.categories || [];
+    let userCategoryList = [];
+    const userReadCategoryList = user.read || [];
+    const userWriteCategoryList = user.write || [];
+
+    userCategoryList = [...userReadCategoryList, ...userWriteCategoryList];
 
     let allUserProducts = [];
+    console.log(userCategoryList);
 
     for (const key in productModels) {
       const Model = productModels[key];
