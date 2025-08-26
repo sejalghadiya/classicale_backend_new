@@ -525,7 +525,7 @@ export const verifyPin = async (req, res) => {
         .status(400)
         .json({ message: "Max user limit reach in this pin." });
     }
-    existingPin.use_count += 1;
+    // existingPin.use_count += 1;
     await existingPin.save();
 
     // Assign PIN to user and mark as verified
