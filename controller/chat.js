@@ -164,10 +164,6 @@ export const sendMessage = async (req, res) => {
       }
     }
     if (type === "text") {
-      // Start a session for transaction
-      const session = await mongoose.startSession();
-      session.startTransaction();
-
       try {
         // Find the recipient
         const recipientId = conversation.participants.find(
@@ -175,36 +171,24 @@ export const sendMessage = async (req, res) => {
         );
 
         // Remove both users from deletedBy array in conversation
-        await ConversationModel.findByIdAndUpdate(
-          conversationId,
-          {
-            $pull: {
-              deletedBy: {
-                $in: [senderId, recipientId],
-              },
+        await ConversationModel.findByIdAndUpdate(conversationId, {
+          $pull: {
+            deletedBy: {
+              $in: [senderId, recipientId],
             },
           },
-          { session }
-        );
+        });
 
-        const newMessage = await CommunicateModel.create(
-          [
-            {
-              chatId: conversationId,
-              senderId: senderId,
-              productId: productId,
-              type: type,
-              content: content,
-              metaData: metaData,
-              status: status,
-              deletedBy: [], // Initialize empty deletedBy array
-            },
-          ],
-          { session }
-        );
-
-        await session.commitTransaction();
-        session.endSession();
+        const newMessage = await CommunicateModel.create({
+          chatId: conversationId,
+          senderId: senderId,
+          productId: productId,
+          type: type,
+          content: content,
+          metaData: metaData,
+          status: status,
+          deletedBy: [], // Initialize empty deletedBy array
+        });
 
         // Populate senderId for the response
         await newMessage[0].populate("senderId");
@@ -675,14 +659,10 @@ export const deleteConversationForUser = async (req, res) => {
       return res.status(200).json({ message: "Already deleted" });
     }
 
-    // Start a session for transaction
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
     try {
       // Add user to deletedBy array in conversation
       conv.deletedBy.push(userId);
-      await conv.save({ session });
+      await conv.save();
 
       // Add deletedBy field to all messages in this conversation for this user
       await CommunicateModel.updateMany(
@@ -692,12 +672,8 @@ export const deleteConversationForUser = async (req, res) => {
         },
         {
           $addToSet: { deletedBy: userId },
-        },
-        { session }
+        }
       );
-
-      await session.commitTransaction();
-      session.endSession();
 
       return res.status(200).json({
         message:
