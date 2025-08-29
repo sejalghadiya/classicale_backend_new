@@ -21,6 +21,7 @@ import {
   userAccess,
   userActiveOrInactive,
   getUserByID,
+  getAllRatings,
 } from "../controller/admin.js";
 
 import multer from "multer";
@@ -94,5 +95,8 @@ router.get(
 router.get("/getUserByID", authenticateAdmin, getUserByID);
 
 router.get("/get-product-by-userId", authenticateAdmin, getProductsByUser);
+
+router.get("/get-all-ratings", authenticateAdmin, getAllRatings);
+
 //router.get("/product_active_inactive", productActiveOrInactive);
 export default router;

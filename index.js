@@ -21,7 +21,8 @@ import fs from "fs";
 import { UserModel } from "./model/user.js";
 import { log } from "console";
 import socketInit from "./socket.js";
-import  AppVersionRoute  from "./routes/app_version.js";
+import AppVersionRoute from "./routes/app_version.js";
+import FeedbackRouter from "./routes/feedback.js";
 
 const app = express();
 app.use(express.json({ limit: "10mb" })); // or even higher like '50mb'
@@ -100,6 +101,7 @@ app.use("/api/otp", SendOtpRouter);
 app.use("/api/chat", CommunicateRouter);
 app.use("/api/location", LocationRouter);
 app.use("/api/app-version", AppVersionRoute);
+app.use("/api/feedback", FeedbackRouter);
 
 if (config.nodeEnv === "dev") {
   server.listen(PORT, () => {

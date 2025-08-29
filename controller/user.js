@@ -67,7 +67,7 @@ export const userSignUp = async (req, res) => {
       uIdNumber,
     } = req.body;
 
-    const emailRegex = /^[a-zA-Z0-9]+@[a-zA-Z0-9]+\.[a-zA-Z]+$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
     console.log(req.body);
 
@@ -867,19 +867,6 @@ export const createRating = async (req, res) => {
     }
 
     return res.status(500).json({ msg: "Server error" });
-  }
-};
-
-export const getAllRatings = async (req, res) => {
-  try {
-    const ratings = await RatingModel.find()
-      .sort({ createdAt: -1 }) // latest first
-      .populate("user"); // ✅ Populate full user object
-
-    res.status(200).json(ratings);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ msg: "Server error" });
   }
 };
 

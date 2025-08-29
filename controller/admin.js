@@ -19,6 +19,7 @@ import jwt from "jsonwebtoken"; // Import jsonwebtoken for token generation
 import { sendEmail } from "../utils/sent_email.js"; // Import the sendEmail function
 import { ReportProductModel } from "../model/reoprt_product.js";
 import config from "../utils/config.js";
+import { RatingModel } from "../model/rating.js";
 
 export const adminLogin = async (req, res) => {
   const { email, password } = req.body;
@@ -1487,5 +1488,77 @@ export const getProductsByUser = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Server error", error: error.message });
+  }
+};
+
+// rating
+export const getAllRatings = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    // Get total count for pagination
+    const totalCount = await RatingModel.countDocuments();
+
+    // Fetch paginated ratings with lean() for better performance
+    const ratings = await RatingModel.find()
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate({
+        path: "user",
+        select: "fName lName mName email profileImage",
+        options: { lean: true },
+      })
+      .lean();
+
+    if (ratings.length === 0) {
+      return res.status(201).json({
+        status: 201,
+        data: [],
+        message: "No ratings found",
+        pagination: {
+          totalItems: 0,
+          currentPage: page,
+          totalPages: 0,
+          pageSize: limit,
+        },
+      });
+    }
+
+    // Transform the data to get last items from arrays - now with optimized loop
+    const transformedRatings = ratings.map((rating) => {
+      if (rating.user) {
+        const user = rating.user;
+        // Process all array fields in one loop
+        ["fName", "lName", "mName", "profileImage"].forEach((field) => {
+          if (Array.isArray(user[field])) {
+            user[field] = user[field][user[field].length - 1];
+          }
+        });
+      }
+      return rating;
+    });
+
+    // Calculate pagination info
+    const totalPages = Math.ceil(totalCount / limit);
+
+    res.status(200).json({
+      status: 200,
+      data: transformedRatings,
+      message: "Ratings fetched successfully",
+      pagination: {
+        totalItems: totalCount,
+        currentPage: page,
+        totalPages: totalPages,
+        pageSize: limit,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ status: 500, message: "Server error" });
   }
 };
