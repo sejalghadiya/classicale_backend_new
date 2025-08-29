@@ -191,9 +191,9 @@ export const sendMessage = async (req, res) => {
         });
 
         // Populate senderId for the response
-        await newMessage[0].populate("senderId");
+        await newMessage.populate("senderId");
 
-        // console.log("response", newMessage[0]);
+        // console.log("response", newMessage);
         console.log("senderId", senderId);
         console.log("recipientId", recipientId);
 
@@ -226,25 +226,22 @@ export const sendMessage = async (req, res) => {
 
         // Send message directly to recipient if they're in the conversation
         if (recipientSocketId) {
-          io.to(recipientSocketId).emit("message", newMessage[0]);
+          io.to(recipientSocketId).emit("message", newMessage);
         } else {
           console.log(`Recipient ${recipientId} is not in conversation.`);
         }
 
-        if (!newMessage[0]) {
+        if (!newMessage) {
           return res.status(404).json({ message: "Failed to create message" });
         }
 
         return res.status(200).json({
           message: "Message sent successfully",
           status: 200,
-          data: newMessage[0],
+          data: newMessage,
         });
       } catch (error) {
-        if (session.inTransaction()) {
-          await session.abortTransaction();
-        }
-        session.endSession();
+        console.error("Error sending message:", error);
         throw error;
       }
     } else if (type === "image") {
@@ -681,8 +678,7 @@ export const deleteConversationForUser = async (req, res) => {
         status: 200,
       });
     } catch (error) {
-      await session.abortTransaction();
-      session.endSession();
+      console.error("Error in delete operation:", error);
       throw error;
     }
   } catch (err) {
