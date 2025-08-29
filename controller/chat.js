@@ -15,6 +15,7 @@ import { SmartPhoneModel } from "../model/smart_phone.js";
 import { io } from "../index.js";
 import { onlineUsers, joinConversation } from "../socket.js";
 import { saveBase64Image } from "../utils/image_store.js";
+import mongoose from "mongoose";
 const productModels = {
   Bike: BikeModel,
   Car: CarModel,
@@ -163,80 +164,105 @@ export const sendMessage = async (req, res) => {
       }
     }
     if (type === "text") {
-      const newMessage = await CommunicateModel.create({
-        chatId: conversationId,
-        senderId: senderId,
-        productId: productId,
-        type: type,
-        content: content,
-        metaData: metaData,
-        status: status,
-      });
+      // Start a session for transaction
+      const session = await mongoose.startSession();
+      session.startTransaction();
 
-      // Update the conversation with the new message
-      await newMessage.save();
-      // Populate senderId
-      await newMessage.populate("senderId");
+      try {
+        // Find the recipient
+        const recipientId = conversation.participants.find(
+          (id) => id.toString() !== senderId
+        );
 
-      // console.log("response", newMessage);
-      if (!newMessage) {
-        return res.status(404).json({ message: "Conversation not found" });
-      }
-      // Identify recipient (the other participant)
-      console.log("senderId", senderId);
+        // Remove both users from deletedBy array in conversation
+        await ConversationModel.findByIdAndUpdate(
+          conversationId,
+          {
+            $pull: {
+              deletedBy: {
+                $in: [senderId, recipientId],
+              },
+            },
+          },
+          { session }
+        );
 
-      const recipientId = conversation.participants.find(
-        (id) => id.toString() !== senderId
-      );
-      console.log("recipientId", recipientId);
-      const onlineUserSocketId = onlineUsers.get(recipientId.toString());
-      const onlineSenderSocketId = onlineUsers.get(senderId.toString());
-      const recipientSocketId = onlineUsers.get(recipientId.toString());
+        const newMessage = await CommunicateModel.create(
+          [
+            {
+              chatId: conversationId,
+              senderId: senderId,
+              productId: productId,
+              type: type,
+              content: content,
+              metaData: metaData,
+              status: status,
+              deletedBy: [], // Initialize empty deletedBy array
+            },
+          ],
+          { session }
+        );
 
-      console.log("onlineUserSocketId", onlineUserSocketId);
-      console.log("onlineSenderSocketId", onlineUsers);
-      console.log("recipientSocketId", joinConversation);
-      // Emit fetchAPI event to both sender and recipient
-      // This is to notify them to fetch the latest messages
-      // You can customize this part based on your application's logic
-      if (recipientSocketId) {
+        await session.commitTransaction();
+        session.endSession();
+
+        // Populate senderId for the response
+        await newMessage[0].populate("senderId");
+
+        // console.log("response", newMessage[0]);
+        console.log("senderId", senderId);
+        console.log("recipientId", recipientId);
+
+        // Get socket IDs for both users
+        const onlineUserSocketId = onlineUsers.get(recipientId.toString());
+        const onlineSenderSocketId = onlineUsers.get(senderId.toString());
+        const recipientSocketId = joinConversation.get(recipientId.toString());
+
+        console.log("onlineUserSocketId", onlineUserSocketId);
+        console.log("onlineSenderSocketId", onlineSenderSocketId);
         console.log("recipientSocketId", recipientSocketId);
-      }
-      if (onlineUserSocketId) {
-        io.to(onlineUserSocketId).emit("fetchAPI", {
-          message: "fetch message",
-        });
-      } else {
-        // If the recipient is not online, you might want to handle this case
-        console.log(
-          `User with ID ${recipientId} is not online. No socket connection found.`
-        );
-      }
-      if (onlineSenderSocketId) {
-        io.to(onlineSenderSocketId).emit("fetchAPI", {
-          message: "fetch message",
-        });
-      } else {
-        // If the sender is not online, you might want to handle this case
-        console.log(
-          `User with ID ${senderId} is not online. No socket connection found.`
-        );
-      }
 
-      if (recipientSocketId) {
-        console.log("onlineUserSocketId", recipientSocketId);
-        io.to(recipientSocketId).emit("message", newMessage);
-      } else {
-        // If the recipient is not in a conversation, you might want to handle this case
-        console.log(
-          `Recipient with ID ${recipientId} is not in a conversation. No socket connection found.`
-        );
+        // Notify recipient to fetch new messages
+        if (onlineUserSocketId) {
+          io.to(onlineUserSocketId).emit("fetchAPI", {
+            message: "fetch message",
+          });
+        } else {
+          console.log(`Recipient ${recipientId} is not online.`);
+        }
+
+        // Notify sender to fetch new messages
+        if (onlineSenderSocketId) {
+          io.to(onlineSenderSocketId).emit("fetchAPI", {
+            message: "fetch message",
+          });
+        } else {
+          console.log(`Sender ${senderId} is not online.`);
+        }
+
+        // Send message directly to recipient if they're in the conversation
+        if (recipientSocketId) {
+          io.to(recipientSocketId).emit("message", newMessage[0]);
+        } else {
+          console.log(`Recipient ${recipientId} is not in conversation.`);
+        }
+
+        if (!newMessage[0]) {
+          return res.status(404).json({ message: "Failed to create message" });
+        }
+
+        return res.status(200).json({
+          message: "Message sent successfully",
+          status: 200,
+          data: newMessage[0],
+        });
+      } catch (error) {
+        if (session.inTransaction()) {
+          await session.abortTransaction();
+        }
+        session.endSession();
+        throw error;
       }
-      return res.status(200).json({
-        message: "Message sent successfully",
-        status: 200,
-        data: newMessage,
-      });
     } else if (type === "image") {
     } else if (type === "pdf") {
     } else {
@@ -262,6 +288,7 @@ export const fetchConversationId = async (req, res) => {
     const conversation = await ConversationModel.findOne({
       participants: { $all: [userId] },
       product: productId,
+      deletedBy: { $ne: userId }, // <-- NOT deleted by this user
     });
 
     if (!conversation) {
@@ -334,7 +361,6 @@ export const fetchConversationId = async (req, res) => {
 //   }
 // };
 
-
 export const fetchAllConversations = async (req, res) => {
   const { userId } = req.params; // current user
 
@@ -342,7 +368,7 @@ export const fetchAllConversations = async (req, res) => {
     /* 1️⃣  Filter: exclude conversations soft‑deleted by this user */
     const conversations = await ConversationModel.find({
       participants: { $all: [userId] }, // user is a participant
-      deletedBy: { $ne: userId }, // <-- NOT deleted by this user
+      deletedBy: { $nin: [userId] }, // <-- NOT deleted by this user
     })
       .populate(
         "participants",
@@ -350,7 +376,7 @@ export const fetchAllConversations = async (req, res) => {
       )
       .populate("productTypeId");
     console.log("conversations", conversations);
-    
+
     if (!conversations.length) {
       return res
         .status(404)
@@ -362,6 +388,7 @@ export const fetchAllConversations = async (req, res) => {
       conversations.map(async (conversation) => {
         const lastMessage = await CommunicateModel.findOne({
           chatId: conversation._id,
+          deletedBy: { $nin: [userId] }, // Don't show messages deleted by this user
         })
           .populate(
             "senderId",
@@ -374,6 +401,7 @@ export const fetchAllConversations = async (req, res) => {
           chatId: conversation._id,
           senderId: { $ne: userId }, // not current user
           status: { $ne: "read" },
+          deletedBy: { $nin: [userId] }, // Don't count deleted messages
         });
 
         return {
@@ -401,14 +429,19 @@ export const fetchMessages = async (req, res) => {
   const { conversationId } = req.params;
 
   try {
-    const messages = await CommunicateModel.find({ chatId: conversationId })
+    const messages = await CommunicateModel.find({
+      chatId: conversationId,
+      deletedBy: { $nin: [req.user._id] }, // Use $nin for array field
+    })
       .populate(
         "senderId",
         "_id name email profileImage phone fName lName mName gender"
       )
       .sort({ createdAt: 1 });
-
-    if (!messages) {
+    console.log("Request user ID:", req.user._id);
+    console.log("Fetched messages:", messages);
+    if (!messages || messages.length === 0) {
+      // Added check for empty array
       return res.status(404).json({ message: "Messages not found" });
     }
 
@@ -623,30 +656,61 @@ export const sendImageMessage = async (req, res) => {
 
 export const deleteConversationForUser = async (req, res) => {
   const { conversationId } = req.params;
-  const userId = req.userId || req.body.userId; // auth middleware से आया हो
+  const userId = req.userId || req.body.userId;
 
   try {
+    // Find conversation and validate
     const conv = await ConversationModel.findById(conversationId);
     if (!conv) {
       return res.status(404).json({ message: "Conversation not found" });
     }
 
-    // participatory check
+    // Check if user is a participant
     if (!conv.participants.map((id) => id.toString()).includes(userId)) {
       return res.status(403).json({ message: "Not your conversation" });
     }
 
-    // already deleted?
+    // Check if already deleted by this user
     if (conv.deletedBy.includes(userId)) {
       return res.status(200).json({ message: "Already deleted" });
     }
 
-    conv.deletedBy.push(userId);
-    await conv.save();
+    // Start a session for transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    return res.status(200).json({ message: "Conversation soft deleted" });
+    try {
+      // Add user to deletedBy array in conversation
+      conv.deletedBy.push(userId);
+      await conv.save({ session });
+
+      // Add deletedBy field to all messages in this conversation for this user
+      await CommunicateModel.updateMany(
+        {
+          chatId: conversationId,
+          deletedBy: { $ne: userId }, // Only update if not already deleted by this user
+        },
+        {
+          $addToSet: { deletedBy: userId },
+        },
+        { session }
+      );
+
+      await session.commitTransaction();
+      session.endSession();
+
+      return res.status(200).json({
+        message:
+          "Conversation and associated messages soft deleted successfully",
+        status: 200,
+      });
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
+    }
   } catch (err) {
     console.error("Delete conversation error:", err);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: "Internal server error", status: 500 });
   }
 };
