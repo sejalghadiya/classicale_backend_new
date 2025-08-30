@@ -17,7 +17,7 @@ const socketInit = (io) => {
     // Check if userId is already connected
     removeUserFromSocket(userId);
     // Add user to onlineUsers map
-    addUserToSocket(userId, socket.id);
+    addUserToSocket(userId.toString(), socket.id);
     // Listen for user registration
     socket.on("joinRoom", async (conversationId) => {
       try {
@@ -28,6 +28,7 @@ const socketInit = (io) => {
           });
           return;
         }
+        await socket.join(conversationId);
         joinConversation.set(conversationId, socket.id);
         console.log("Registering user:", conversationId);
         socket.emit("joinRoom", {
@@ -50,6 +51,7 @@ const socketInit = (io) => {
           socket.emit("error", {
             message: "Invalid conversation Id",
           });
+          
           return;
         }
 

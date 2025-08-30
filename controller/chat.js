@@ -197,43 +197,47 @@ export const sendMessage = async (req, res) => {
         console.log("senderId", senderId);
         console.log("recipientId", recipientId);
 
-        // Get socket IDs for both users
-        const onlineUserSocketId = onlineUsers.get(recipientId.toString());
-        const onlineSenderSocketId = onlineUsers.get(senderId.toString());
-        const recipientSocketId = joinConversation.get(recipientId.toString());
+        // Convert IDs to strings for consistent comparison
+        const recipientIdStr = recipientId.toString();
+        const senderIdStr = senderId.toString();
+        const conversationIdStr = conversationId.toString();
 
-        console.log("onlineUserSocketId", onlineUserSocketId);
-        console.log("onlineSenderSocketId", onlineSenderSocketId);
-        console.log("recipientSocketId", recipientSocketId);
+        console.log("Checking socket connections:");
+        console.log("All online users:", Array.from(onlineUsers.entries()));
+        console.log(
+          "All active conversations:",
+          Array.from(joinConversation.entries())
+        );
 
-        // Notify recipient to fetch new messages
-        if (onlineUserSocketId) {
-          io.to(onlineUserSocketId).emit("fetchAPI", {
-            message: "fetch message",
-          });
-          io.to(onlineUserSocketId).emit("message", newMessage);
-        } else {
-          console.log(`Recipient ${recipientId} is not online.`);
-        }
+        // Get socket IDs
+        const recipientSocketId = onlineUsers.get(recipientIdStr);
+        const senderSocketId = onlineUsers.get(senderIdStr);
 
-        // Notify sender to fetch new messages
-        if (onlineSenderSocketId) {
-          io.to(onlineSenderSocketId).emit("fetchAPI", {
-            message: "fetch message",
-          });
-        } else {
-          console.log(`Sender ${senderId} is not online.`);
-        }
+        console.log(
+          `Recipient socket ID (${recipientIdStr}):`,
+          recipientSocketId
+        );
+        console.log(`Sender socket ID (${senderIdStr}):`, senderSocketId);
 
-        // Send message directly to recipient if they're in the conversation
+        // Emit to conversation room first
+        io.to(conversationIdStr).emit("message", {
+          type: "new_message",
+          data: newMessage,
+        });
+
+        // Send notifications to individual sockets
         if (recipientSocketId) {
-          io.to(recipientSocketId).emit("message", newMessage);
-        } else {
-          console.log(`Recipient ${recipientId} is not in conversation.`);
+          io.to(recipientSocketId).emit("notification", {
+            type: "new_message",
+            data: newMessage,
+          });
         }
 
-        if (!newMessage) {
-          return res.status(404).json({ message: "Failed to create message" });
+        if (senderSocketId) {
+          io.to(senderSocketId).emit("notification", {
+            type: "message_sent",
+            data: newMessage,
+          });
         }
 
         return res.status(200).json({
