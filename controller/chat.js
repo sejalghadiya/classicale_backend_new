@@ -211,6 +211,7 @@ export const sendMessage = async (req, res) => {
           io.to(onlineUserSocketId).emit("fetchAPI", {
             message: "fetch message",
           });
+          io.to(onlineUserSocketId).emit("message", newMessage);
         } else {
           console.log(`Recipient ${recipientId} is not online.`);
         }
@@ -634,7 +635,6 @@ export const sendImageMessage = async (req, res) => {
 };
 
 //conversation delete for user
-
 export const deleteConversationForUser = async (req, res) => {
   const { conversationId } = req.params;
   const userId = req.userId || req.body.userId;
