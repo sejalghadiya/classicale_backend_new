@@ -425,7 +425,7 @@ export const fetchMessages = async (req, res) => {
       )
       .sort({ createdAt: 1 });
     console.log("Request user ID:", req.user._id);
-    console.log("Fetched messages:", messages);
+    // console.log("Fetched messages:", messages);
     if (!messages || messages.length === 0) {
       // Added check for empty array
       return res.status(404).json({ message: "Messages not found" });
