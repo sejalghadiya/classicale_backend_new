@@ -24,7 +24,7 @@ import {
   getProductTypesWithSubCategories,
   trackProductView,
 } from "../controller/product.js";
-import { authenticateUser } from "../auth/middle.js";
+import { authenticateAdmin, authenticateUser } from "../auth/middle.js";
 // In routes or other files
 //import { protect, admin } from '../auth/productAuth.js';
 
@@ -57,7 +57,7 @@ router.delete(
 router.delete("/delete-product-image", authenticateUser, deleteProductImage);
 router.post(
   "/product-active-inactive",
-  authenticateUser,
+  authenticateAdmin,
   toggleProductVisibility
 );
 router.get("/get-product-type", authenticateUser, getProductType);
