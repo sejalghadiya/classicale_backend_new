@@ -57,7 +57,7 @@ router.delete(
 router.delete("/delete-product-image", authenticateUser, deleteProductImage);
 router.post(
   "/product-active-inactive",
-  authenticateAdmin,
+  // authenticateAdmin,
   toggleProductVisibility
 );
 router.get("/get-product-type", authenticateUser, getProductType);
