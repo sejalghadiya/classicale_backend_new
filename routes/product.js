@@ -72,4 +72,5 @@ router.get(
 router.post("/track-product-view", authenticateUser, trackProductView);
 router.get("/filter", filterProduct);
 router.get("/get-optimize-products", getAllProducts);
+
 export default router;
