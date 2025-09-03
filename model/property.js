@@ -69,8 +69,16 @@ const PropertySchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-PropertySchema.index({ createdAt: -1 });
-PropertySchema.index({ updatedAt: -1 });
-PropertySchema.index({ location: "2dsphere" });
+// Index to quickly filter by active products in categories
+PropertySchema.index({ categories: 1, isActive: 1, isDeleted: 1 });
+
+// Compound index for geo + category filtering
+PropertySchema.index({ categories: 1, location: "2dsphere" });
+
+// Index for filtering by user (e.g., my ads, user profile)
+PropertySchema.index({ userId: 1 });
+
+// Indexes for location fallback filtering
+PropertySchema.index({ country: 1, state: 1, city: 1 });
 
 export const PropertyModel = mongoose.model("property", PropertySchema);

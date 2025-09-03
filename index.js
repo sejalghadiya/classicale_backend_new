@@ -15,14 +15,12 @@ import { LocationModel } from "./model/location.js";
 import SendOtpRouter from "./routes/sendOtp.js";
 import path from "path";
 import cors from "cors";
-import { upload } from "./auth/image.js";
 import LocationRouter from "./routes/location.js";
-import fs from "fs";
-import { UserModel } from "./model/user.js";
 import { log } from "console";
 import socketInit from "./socket.js";
 import AppVersionRoute from "./routes/app_version.js";
 import FeedbackRouter from "./routes/feedback.js";
+
 
 const app = express();
 app.use(express.json({ limit: "10mb" })); // or even higher like '50mb'
@@ -42,7 +40,7 @@ const __filename = new URL(import.meta.url).pathname;
 const __dirname = path.dirname(__filename);
 await mongoose
   .connect(config.database.url)
-  .then(() => {
+  .then(async () => {
     console.log("Connected to MongoDB Atlas!");
   })
   .catch((error) => console.error("Error connecting to MongoDB:", error));

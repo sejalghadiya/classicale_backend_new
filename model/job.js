@@ -48,8 +48,16 @@ const JobSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-JobSchema.index({ createdAt: -1 });
-JobSchema.index({ updatedAt: -1 });
-JobSchema.index({ location: "2dsphere" });
+// Index to quickly filter by active products in categories
+JobSchema.index({ categories: 1, isActive: 1, isDeleted: 1 });
+
+// Compound index for geo + category filtering
+JobSchema.index({ categories: 1, location: "2dsphere" });
+
+// Index for filtering by user (e.g., my ads, user profile)
+JobSchema.index({ userId: 1 });
+
+// Indexes for location fallback filtering
+JobSchema.index({ country: 1, state: 1, city: 1 });
 
 export const JobModel = mongoose.model("Job", JobSchema);

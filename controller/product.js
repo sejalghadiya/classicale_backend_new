@@ -18,9 +18,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { saveBase64Image } from "../utils/image_store.js";
-import { all } from "axios";
-import { log } from "console";
-import { match } from "assert";
+
 // Fix __dirname for ES module
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -264,7 +262,6 @@ export const requestPdfAccess = async (req, res) => {
         pass: "qkrn wlbu wnft qzgn",
       },
     });
-
 
     // 🟢 Email Options
     const mailOptions = {
@@ -807,142 +804,190 @@ export const getAllProducts = async (req, res) => {
     let allProducts = {};
     let found = false;
 
-    // Helper function to query all models
-    const fetchProductsFromAllModels = async (baseQuery) => {
-      let tempProducts = {};
-      let totalFound = 0;
+    // ------------------------
+    // Helper: Build aggregation pipeline
+    // ------------------------
+    const buildPipeline = (queryType, radius = null) => {
+      const pipeline = [];
 
-      for (const [key, Model] of Object.entries(productModels)) {
-        let query = Model.find(baseQuery).populate("productType").populate({
-          path: "subProductType",
-          select: "-modelName -productType",
+      if (queryType === "geo" && latitude && longitude && radius) {
+        pipeline.push({
+          $geoNear: {
+            near: {
+              type: "Point",
+              coordinates: [parseFloat(longitude), parseFloat(latitude)],
+            },
+            distanceField: "dist.calculated",
+            maxDistance: radius,
+            query: {
+              isActive: true,
+              isDeleted: false,
+              categories: { $in: categoryFilter },
+            },
+            spherical: true,
+          },
         });
+      } else {
+        const exprConditions = [];
 
-        if ("userId" in Model.schema.paths) {
-          query = query.populate({
-            path: "userId",
-            select:
-              "fName lName mName email phone profileImage state district country area isActive isDeleted",
-            match: { isActive: true, isDeleted: false }, // Only populate active and non-deleted users
+        if (city) {
+          exprConditions.push({
+            $eq: [
+              {
+                $arrayElemAt: ["$city", { $subtract: [{ $size: "$city" }, 1] }],
+              },
+              city,
+            ],
           });
         }
 
-        let results = await query;
-
-        // Filter out products where user is not populated (inactive or deleted)
-        // or where product is marked as deleted
-        results = results.filter((product) => {
-          return product.userId && !product.isDeleted;
-        });
-
-        if (results.length > 0) {
-          tempProducts[key] = results;
-          totalFound += results.length;
+        if (state) {
+          exprConditions.push({
+            $eq: [
+              {
+                $arrayElemAt: [
+                  "$state",
+                  { $subtract: [{ $size: "$state" }, 1] },
+                ],
+              },
+              state,
+            ],
+          });
         }
+
+        if (country) {
+          exprConditions.push({
+            $eq: [
+              {
+                $arrayElemAt: [
+                  "$country",
+                  { $subtract: [{ $size: "$country" }, 1] },
+                ],
+              },
+              country,
+            ],
+          });
+        }
+
+        const baseMatch = {
+          isActive: true,
+          isDeleted: false,
+          categories: { $in: categoryFilter },
+        };
+
+        if (exprConditions.length > 0) {
+          baseMatch.$expr = { $and: exprConditions };
+        }
+
+        pipeline.push({ $match: baseMatch });
       }
 
-      return { tempProducts, totalFound };
+      // Lookup user
+      pipeline.push({
+        $lookup: {
+          from: "users",
+          let: { userId: "$userId" },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ["$_id", "$$userId"] },
+                isActive: true,
+                isDeleted: false,
+              },
+            },
+            {
+              $project: {
+                fName: 1,
+                lName: 1,
+                email: 1,
+                phone: 1,
+                profileImage: 1,
+                state: 1,
+                district: 1,
+                country: 1,
+                area: 1,
+              },
+            },
+          ],
+          as: "userId",
+        },
+      });
+      pipeline.push({ $unwind: "$userId" });
+
+      // Lookup productType
+      pipeline.push({
+        $lookup: {
+          from: "producttypes",
+          localField: "productType",
+          foreignField: "_id",
+          as: "productType",
+        },
+      });
+      pipeline.push({ $unwind: "$productType" });
+
+      // Lookup subProductType
+      pipeline.push({
+        $lookup: {
+          from: "subproducttypes",
+          localField: "subProductType",
+          foreignField: "_id",
+          as: "subProductType",
+        },
+      });
+      pipeline.push({
+        $unwind: { path: "$subProductType", preserveNullAndEmptyArrays: true },
+      });
+
+      // Limit (for performance)
+      pipeline.push({ $limit: 50 });
+
+      return pipeline;
     };
 
     // ------------------------
-    // ✅ PRIORITY 1: Radius Search if Area is Present
+    // Search: Priority 1 (Geo)
     // ------------------------
     if (area) {
-      console.log(`Searching within ${area} area...`);
-
       for (
         let radius = STEP_RADIUS;
         radius <= MAX_RADIUS;
         radius += STEP_RADIUS
       ) {
-        const geoQuery = {
-          isActive: true,
-          isDeleted: false,
-          categories: { $in: categoryFilter },
-          location: {
-            $near: {
-              $geometry: {
-                type: "Point",
-                coordinates: [parseFloat(longitude), parseFloat(latitude)],
-              },
-              $maxDistance: radius,
-            },
-          },
-        };
+        let tempProducts = {};
+        let totalFound = 0;
 
-        const { tempProducts, totalFound } = await fetchProductsFromAllModels(
-          geoQuery
-        );
+        for (const [key, Model] of Object.entries(productModels)) {
+          const pipeline = buildPipeline("geo", radius);
+          const results = await Model.aggregate(pipeline);
+          if (results.length > 0) {
+            tempProducts[key] = results;
+            totalFound += results.length;
+          }
+        }
 
         if (totalFound >= MIN_FOUND_PRODUCTS) {
           allProducts = tempProducts;
           found = true;
-        } else {
-          console.log(
-            `No products found within ${
-              radius / 1000
-            } km radius. Trying larger radius...`
-          );
+          break; // ✅ stop after finding enough products
         }
       }
     }
 
     // ------------------------
-    // ✅ PRIORITY 2: Fallback to Location Filtering
+    // Search: Priority 2 (Location fallback)
     // ------------------------
     if (!found) {
-      console.log("Searching by location filter...");
+      let tempProducts = {};
+      let totalFound = 0;
 
-      let locationQuery = {
-        isActive: true,
-        isDeleted: false,
-        categories: { $in: categoryFilter },
-      };
-
-      const exprConditions = [];
-
-      if (city) {
-        exprConditions.push({
-          $eq: [
-            { $arrayElemAt: ["$city", { $subtract: [{ $size: "$city" }, 1] }] },
-            city,
-          ],
-        });
+      for (const [key, Model] of Object.entries(productModels)) {
+        const pipeline = buildPipeline("location");
+        const results = await Model.aggregate(pipeline);
+        if (results.length > 0) {
+          tempProducts[key] = results;
+          totalFound += results.length;
+        }
       }
-
-      if (state) {
-        exprConditions.push({
-          $eq: [
-            {
-              $arrayElemAt: ["$state", { $subtract: [{ $size: "$state" }, 1] }],
-            },
-            state,
-          ],
-        });
-      }
-
-      if (country) {
-        exprConditions.push({
-          $eq: [
-            {
-              $arrayElemAt: [
-                "$country",
-                { $subtract: [{ $size: "$country" }, 1] },
-              ],
-            },
-            country,
-          ],
-        });
-      }
-
-      if (exprConditions.length > 0) {
-        locationQuery.$expr = { $and: exprConditions };
-      }
-      console.dir(locationQuery, { depth: null, colors: true });
-
-      const { tempProducts, totalFound } = await fetchProductsFromAllModels(
-        locationQuery
-      );
 
       if (totalFound >= MIN_FOUND_PRODUCTS) {
         allProducts = tempProducts;
@@ -1597,3 +1642,4 @@ export const trackProductView = async (req, res) => {
       .json({ message: "Server error", error: error.message });
   }
 };
+

@@ -43,7 +43,15 @@ const OtherSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-OtherSchema.index({ createdAt: -1 });
-OtherSchema.index({ updatedAt: -1 });
-OtherSchema.index({ location: "2dsphere" });
+// Index to quickly filter by active products in categories
+OtherSchema.index({ categories: 1, isActive: 1, isDeleted: 1 });
+
+// Compound index for geo + category filtering
+OtherSchema.index({ categories: 1, location: "2dsphere" });
+
+// Index for filtering by user (e.g., my ads, user profile)
+OtherSchema.index({ userId: 1 });
+
+// Indexes for location fallback filtering
+OtherSchema.index({ country: 1, state: 1, city: 1 });
 export const OtherModel = mongoose.model("other", OtherSchema);

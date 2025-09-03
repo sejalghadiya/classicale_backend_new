@@ -43,8 +43,16 @@ const BikeSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-BikeSchema.index({ createdAt: -1 });
-BikeSchema.index({ updatedAt: -1 });
-BikeSchema.index({ location: "2dsphere" });
+// Index to quickly filter by active products in categories
+BikeSchema.index({ categories: 1, isActive: 1, isDeleted: 1 });
+
+// Compound index for geo + category filtering
+BikeSchema.index({ categories: 1, location: "2dsphere" });
+
+// Index for filtering by user (e.g., my ads, user profile)
+BikeSchema.index({ userId: 1 });
+
+// Indexes for location fallback filtering
+BikeSchema.index({ country: 1, state: 1, city: 1 });
 
 export const BikeModel = mongoose.model("Bike", BikeSchema);

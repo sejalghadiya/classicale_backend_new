@@ -42,9 +42,17 @@ const Book_sport_hobbySchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-Book_sport_hobbySchema.index({ createdAt: -1 });
-Book_sport_hobbySchema.index({ updatedAt: -1 });
-Book_sport_hobbySchema.index({ location: "2dsphere" });
+// Index to quickly filter by active products in categories
+Book_sport_hobbySchema.index({ categories: 1, isActive: 1, isDeleted: 1 });
+
+// Compound index for geo + category filtering
+Book_sport_hobbySchema.index({ categories: 1, location: "2dsphere" });
+
+// Index for filtering by user (e.g., my ads, user profile)
+Book_sport_hobbySchema.index({ userId: 1 });
+
+// Indexes for location fallback filtering
+Book_sport_hobbySchema.index({ country: 1, state: 1, city: 1 });
 
 export const BookSportHobbyModel = mongoose.model(
   "book_sport_hobby",

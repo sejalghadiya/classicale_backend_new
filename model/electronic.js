@@ -42,8 +42,16 @@ const ElectronicSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-ElectronicSchema.index({ createdAt: -1 });
-ElectronicSchema.index({ updatedAt: -1 });
-ElectronicSchema.index({ location: "2dsphere" });
+// Index to quickly filter by active products in categories
+ElectronicSchema.index({ categories: 1, isActive: 1, isDeleted: 1 });
+
+// Compound index for geo + category filtering
+ElectronicSchema.index({ categories: 1, location: "2dsphere" });
+
+// Index for filtering by user (e.g., my ads, user profile)
+ElectronicSchema.index({ userId: 1 });
+
+// Indexes for location fallback filtering
+ElectronicSchema.index({ country: 1, state: 1, city: 1 });
 
 export const ElectronicModel = mongoose.model("electronic",ElectronicSchema);

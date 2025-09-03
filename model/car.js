@@ -49,8 +49,16 @@ const CarSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-CarSchema.index({ createdAt: -1 });
-CarSchema.index({ updatedAt: -1 });
-CarSchema.index({ location: "2dsphere" });
+// Index to quickly filter by active products in categories
+CarSchema.index({ categories: 1, isActive: 1, isDeleted: 1 });
+
+// Compound index for geo + category filtering
+CarSchema.index({ categories: 1, location: "2dsphere" });
+
+// Index for filtering by user (e.g., my ads, user profile)
+CarSchema.index({ userId: 1 });
+
+// Indexes for location fallback filtering
+CarSchema.index({ country: 1, state: 1, city: 1 });
 
 export const CarModel = mongoose.model("Car", CarSchema);

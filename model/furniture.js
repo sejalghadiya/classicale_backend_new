@@ -42,8 +42,16 @@ const FurnitureSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-FurnitureSchema.index({ createdAt: -1 });
-FurnitureSchema.index({ updatedAt: -1 });
-FurnitureSchema.index({ location: "2dsphere" });
+// Index to quickly filter by active products in categories
+FurnitureSchema.index({ categories: 1, isActive: 1, isDeleted: 1 });
+
+// Compound index for geo + category filtering
+FurnitureSchema.index({ categories: 1, location: "2dsphere" });
+
+// Index for filtering by user (e.g., my ads, user profile)
+FurnitureSchema.index({ userId: 1 });
+
+// Indexes for location fallback filtering
+FurnitureSchema.index({ country: 1, state: 1, city: 1 });
 
 export const FurnitureModel = mongoose.model("furniture", FurnitureSchema); 
