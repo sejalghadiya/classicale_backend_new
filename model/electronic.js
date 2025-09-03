@@ -19,6 +19,9 @@ const ElectronicSchema = new mongoose.Schema(
     state: { type: [String] },
     pincode: { type: [String] },
     country: { type: [String] },
+    stateLatest: { type: String },
+    cityLatest: { type: String },
+    countryLatest: { type: String },
     view_count: { type: [mongoose.Schema.Types.ObjectId], ref: "user" },
     isDeleted: {
       type: Boolean,
@@ -52,6 +55,18 @@ ElectronicSchema.index({ categories: 1, location: "2dsphere" });
 ElectronicSchema.index({ userId: 1 });
 
 // Indexes for location fallback filtering
-ElectronicSchema.index({ country: 1, state: 1, city: 1 });
+ElectronicSchema.index({
+  countryLatest: 1,
+  stateLatest: 1,
+  cityLatest: 1,
+});
+
+ElectronicSchema.pre("save", function (next) {
+  if (this.state?.length) this.stateLatest = this.state[this.state.length - 1];
+  if (this.city?.length) this.cityLatest = this.city[this.city.length - 1];
+  if (this.country?.length)
+    this.countryLatest = this.country[this.country.length - 1];
+  next();
+});
 
 export const ElectronicModel = mongoose.model("electronic",ElectronicSchema);

@@ -17,6 +17,9 @@ const PetSchema = new mongoose.Schema(
     city: { type: [String] },
     state: { type: [String] },
     country: { type: [String] },
+    stateLatest: { type: String },
+    cityLatest: { type: String },
+    countryLatest: { type: String },
     addLink: { type: [String] },
     pincode: { type: [String] },
     view_count: { type: [mongoose.Schema.Types.ObjectId], ref: "user" },
@@ -52,5 +55,17 @@ PetSchema.index({ categories: 1, location: "2dsphere" });
 PetSchema.index({ userId: 1 });
 
 // Indexes for location fallback filtering
-PetSchema.index({ country: 1, state: 1, city: 1 });
+PetSchema.index({
+  countryLatest: 1,
+  stateLatest: 1,
+  cityLatest: 1,
+});
+
+PetSchema.pre("save", function (next) {
+  if (this.state?.length) this.stateLatest = this.state[this.state.length - 1];
+  if (this.city?.length) this.cityLatest = this.city[this.city.length - 1];
+  if (this.country?.length)
+    this.countryLatest = this.country[this.country.length - 1];
+  next();
+});
 export const PetModel = mongoose.model("pet", PetSchema);

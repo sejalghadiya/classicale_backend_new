@@ -828,61 +828,21 @@ export const getAllProducts = async (req, res) => {
           },
         });
       } else {
-        const exprConditions = [];
-
-        if (city) {
-          exprConditions.push({
-            $eq: [
-              {
-                $arrayElemAt: ["$city", { $subtract: [{ $size: "$city" }, 1] }],
-              },
-              city,
-            ],
-          });
-        }
-
-        if (state) {
-          exprConditions.push({
-            $eq: [
-              {
-                $arrayElemAt: [
-                  "$state",
-                  { $subtract: [{ $size: "$state" }, 1] },
-                ],
-              },
-              state,
-            ],
-          });
-        }
-
-        if (country) {
-          exprConditions.push({
-            $eq: [
-              {
-                $arrayElemAt: [
-                  "$country",
-                  { $subtract: [{ $size: "$country" }, 1] },
-                ],
-              },
-              country,
-            ],
-          });
-        }
-
+        // ✅ Use flattened fields instead of arrayElemAt
         const baseMatch = {
           isActive: true,
           isDeleted: false,
           categories: { $in: categoryFilter },
         };
 
-        if (exprConditions.length > 0) {
-          baseMatch.$expr = { $and: exprConditions };
-        }
+        if (city) baseMatch.cityLatest = city;
+        if (state) baseMatch.stateLatest = state;
+        if (country) baseMatch.countryLatest = country;
 
         pipeline.push({ $match: baseMatch });
       }
 
-      // Lookup user
+      // Lookup user (with filter + projection)
       pipeline.push({
         $lookup: {
           from: "users",
@@ -1642,4 +1602,3 @@ export const trackProductView = async (req, res) => {
       .json({ message: "Server error", error: error.message });
   }
 };
-

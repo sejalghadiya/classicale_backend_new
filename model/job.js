@@ -25,6 +25,9 @@ const JobSchema = new mongoose.Schema(
     state: { type: [String] },
     pincode: { type: [String] },
     country: { type: [String] },
+    stateLatest: { type: String },
+    cityLatest: { type: String },
+    countryLatest: { type: String },
     view_count: { type: [mongoose.Schema.Types.ObjectId], ref: "user" },
     isDeleted: {
       type: Boolean,
@@ -58,6 +61,18 @@ JobSchema.index({ categories: 1, location: "2dsphere" });
 JobSchema.index({ userId: 1 });
 
 // Indexes for location fallback filtering
-JobSchema.index({ country: 1, state: 1, city: 1 });
+JobSchema.index({
+  countryLatest: 1,
+  stateLatest: 1,
+  cityLatest: 1,
+});
+
+JobSchema.pre("save", function (next) {
+  if (this.state?.length) this.stateLatest = this.state[this.state.length - 1];
+  if (this.city?.length) this.cityLatest = this.city[this.city.length - 1];
+  if (this.country?.length)
+    this.countryLatest = this.country[this.country.length - 1];
+  next();
+});
 
 export const JobModel = mongoose.model("Job", JobSchema);

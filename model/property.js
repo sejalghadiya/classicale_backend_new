@@ -41,6 +41,9 @@ const PropertySchema = new mongoose.Schema(
     state: { type: [String] },
     country: { type: [String] },
     pincode: { type: [String] },
+    stateLatest: { type: String },
+    cityLatest: { type: String },
+    countryLatest: { type: String },
     view_count: { type: [mongoose.Schema.Types.ObjectId], ref: "user" },
     isDeleted: {
       type: Boolean,
@@ -79,6 +82,18 @@ PropertySchema.index({ categories: 1, location: "2dsphere" });
 PropertySchema.index({ userId: 1 });
 
 // Indexes for location fallback filtering
-PropertySchema.index({ country: 1, state: 1, city: 1 });
+PropertySchema.index({
+  countryLatest: 1,
+  stateLatest: 1,
+  cityLatest: 1,
+});
+
+PropertySchema.pre("save", function (next) {
+  if (this.state?.length) this.stateLatest = this.state[this.state.length - 1];
+  if (this.city?.length) this.cityLatest = this.city[this.city.length - 1];
+  if (this.country?.length)
+    this.countryLatest = this.country[this.country.length - 1];
+  next();
+});
 
 export const PropertyModel = mongoose.model("property", PropertySchema);
