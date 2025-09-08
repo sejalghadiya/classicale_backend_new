@@ -390,10 +390,20 @@ export const fetchAllConversations = async (req, res) => {
           deletedBy: { $nin: [userId] }, // Don't count deleted messages
         });
 
+        const productSchemaModel = conversation.productTypeId.modelName;
+        const ProductModel = productModels[productSchemaModel];
+        let product = null;
+        if (ProductModel) {
+          product = await ProductModel.findById(conversation.product).select(
+            "title images isActive isDeleted"
+          );
+        }
+
         return {
           ...conversation.toObject(),
           lastMessage,
           unreadCount,
+          product,
         };
       })
     );
