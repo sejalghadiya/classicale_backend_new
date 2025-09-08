@@ -652,7 +652,7 @@ export const addOtherProduct = async (req, res) => {
     // ✅ Convert type string to number
     if (typeof data.type === "string") {
       switch (data.type.toLowerCase()) {
-        case "nil":
+        case "other":
           data.type = 0;
           break;
         case "job":
