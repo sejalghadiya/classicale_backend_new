@@ -9,11 +9,17 @@ const generateOTP = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
 
 export const forgotPassword = async (req, res) => {
-  const { email } = req.body;
+  const { email, category } = req.body;
 
   try {
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+    if (!category) {
+      return res.status(400).json({ message: "User category is required" });
+    }
     // Check if user exists
-    const user = await UserModel.findOne({ email });
+    const user = await UserModel.findOne({ email, userCategory: category });
     if (!user) {
       return res
         .status(404)
@@ -133,13 +139,30 @@ export const verifyOTP1 = async (req, res) => {
   }
 };
 export const verifyOTP = async (req, res) => {
-  const { otp } = req.body;
+  const {email, otp, category } = req.body;
 
   try {
-    const user = await UserModel.findOne({ otp });
+    if (!email) {
+      return res.status(400).json({ message: "Email is required for OTP verification." });
+    }
+
+    if (!category) {
+      return res.status(400).json({ message: "User category is required for OTP verification." });
+    }
+    if (!otp) {
+      return res.status(400).json({ message: "OTP is required for verification." });
+    }
+
+    const user = await UserModel.findOne({email, userCategory: category });
 
     if (!user) {
       return res.status(404).json({ message: "OTP is invalid or expired." });
+    }
+    if(!user.otp) {
+      return res.status(400).json({ message: "No OTP found for this user." });
+    }
+    if (user.otp !== otp) {
+      return res.status(400).json({ message: "Invalid OTP." });
     }
 
     if (user.otpExpire < Date.now()) {
@@ -151,6 +174,8 @@ export const verifyOTP = async (req, res) => {
     req.session.resetEmail = user.email; // ✅ Save email temporarily
 
     //user.isOtpVerified = true;
+    user.otp = null; // Clear OTP after verification
+    user.otpExpire = null; // Clear OTP expiry after verification
     await user.save();
 
     res.status(200).json({ message: "OTP verified successfully." });
@@ -161,7 +186,7 @@ export const verifyOTP = async (req, res) => {
 };
 
 export const changePassword = async (req, res) => {
-  const { email, newPassword, confirmPassword } = req.body;
+  const { email, newPassword, confirmPassword,category } = req.body;
 
   try {
     if (!email) {
@@ -169,12 +194,22 @@ export const changePassword = async (req, res) => {
         .status(400)
         .json({ message: "Email is required to reset password." });
     }
+    if (!category) {
+      return res
+        .status(400)
+        .json({ message: "User category is required to reset password." });
+    }
+    if (!newPassword || !confirmPassword) {
+      return res
+        .status(400)
+        .json({ message: "Both password fields are required." });
+    }
 
     if (newPassword !== confirmPassword) {
       return res.status(400).json({ message: "Passwords do not match." });
     }
 
-    const user = await UserModel.findOne({ email });
+    const user = await UserModel.findOne({ email, userCategory: category });
 
     if (!user) {
       return res.status(404).json({ message: "User not found." });
