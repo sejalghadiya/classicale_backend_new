@@ -12,20 +12,20 @@ const router = express.Router();
 
 
 // Feature request routes
-router.post("/feature-requests", authenticateUser, createFeatureRequest);
-router.get("/feature-requests", getAllFeatureRequests);
-router.get("/feature-requests/:id", getFeatureRequestById);
-router.put("/feature-requests/:id", updateFeatureRequest);
-router.delete("/feature-requests/:id", deleteFeatureRequest);
+router.post("/", authenticateUser, createFeatureRequest);
+router.get("/", getAllFeatureRequests);
+router.get("/:id", getFeatureRequestById);
+router.put("/feature-requests:id", updateFeatureRequest);
+router.delete("/:id", deleteFeatureRequest);
 
 // Admin feature request routes
 router.get(
-    "/admin/feature-requests",
+    "/admin",
     authenticateAdmin,
   getAllFeatureRequests
 );
 router.delete(
-    "/admin/feature-requests/:id",
+    "/admin/:id",
     authenticateAdmin,
   deleteFeatureRequest
 );

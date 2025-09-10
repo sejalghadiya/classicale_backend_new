@@ -10,7 +10,7 @@ export const createFeatureRequest = async (req, res) => {
       userId,
     });
     await featureRequest.save();
-    res.status(201).json({ success: true, data: featureRequest });
+    res.status(200).json({ success: true, data: featureRequest });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
   }
