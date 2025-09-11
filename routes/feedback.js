@@ -10,7 +10,6 @@ import authenticateUser, { authenticateAdmin } from "../auth/middle.js";
 
 const router = express.Router();
 
-
 // Feature request routes
 router.post("/", authenticateUser, createFeatureRequest);
 router.get("/", getAllFeatureRequests);
@@ -19,15 +18,7 @@ router.put("/feature-requests:id", updateFeatureRequest);
 router.delete("/:id", deleteFeatureRequest);
 
 // Admin feature request routes
-router.get(
-    "/admin",
-    authenticateAdmin,
-  getAllFeatureRequests
-);
-router.delete(
-    "/admin/:id",
-    authenticateAdmin,
-  deleteFeatureRequest
-);
+router.get("/admin/list", authenticateAdmin, getAllFeatureRequests);
+router.delete("/admin/:id", authenticateAdmin, deleteFeatureRequest);
 
 export default router;

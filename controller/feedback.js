@@ -18,13 +18,49 @@ export const createFeatureRequest = async (req, res) => {
 
 export const getAllFeatureRequests = async (req, res) => {
   try {
-    const featureRequests = await FeatureRequest.find().populate(
-      "userId",
-      "name email"
-    );
+    console.log("Fetching all feature requests with aggregation");
+
+    const featureRequests = await FeatureRequest.aggregate([
+      {
+        $lookup: {
+          from: "users", // Replace with your actual users collection name
+          localField: "userId",
+          foreignField: "_id",
+          as: "userId",
+        },
+      },
+      {
+        $unwind: "$userId",
+      },
+      {
+        $addFields: {
+          "userId.fName": { $arrayElemAt: ["$userId.fName", -1] },
+          "userId.lName": { $arrayElemAt: ["$userId.lName", -1] },
+          "userId.mName": { $arrayElemAt: ["$userId.mName", -1] },
+        },
+      },
+      {
+        $project: {
+          title: 1,
+          description: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          "userId._id": 1,
+          "userId.name": 1,
+          "userId.email": 1,
+          "userId.fName": 1,
+          "userId.lName": 1,
+          "userId.mName": 1,
+        },
+      },
+    ]);
+
     res.status(200).json({ success: true, data: featureRequests });
   } catch (error) {
-    res.status(400).json({ success: false, error: error.message });
+    console.log(error);
+    res
+      .status(500)
+      .json({ success: false, error: "Failed to fetch feature requests" });
   }
 };
 
