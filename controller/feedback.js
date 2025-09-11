@@ -18,8 +18,6 @@ export const createFeatureRequest = async (req, res) => {
 
 export const getAllFeatureRequests = async (req, res) => {
   try {
-    console.log("Fetching all feature requests with aggregation");
-
     const featureRequests = await FeatureRequest.aggregate([
       {
         $lookup: {
@@ -37,6 +35,7 @@ export const getAllFeatureRequests = async (req, res) => {
           "userId.fName": { $arrayElemAt: ["$userId.fName", -1] },
           "userId.lName": { $arrayElemAt: ["$userId.lName", -1] },
           "userId.mName": { $arrayElemAt: ["$userId.mName", -1] },
+          "userId.profileImage": { $arrayElemAt: ["$userId.profileImage", -1] },
         },
       },
       {
@@ -51,6 +50,7 @@ export const getAllFeatureRequests = async (req, res) => {
           "userId.fName": 1,
           "userId.lName": 1,
           "userId.mName": 1,
+          "userId.profileImage": 1,
         },
       },
     ]);
