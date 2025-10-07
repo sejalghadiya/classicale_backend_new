@@ -1070,8 +1070,8 @@ export const getProductsByUser = async (req, res) => {
     console.log(user);
 
     let userCategoryList = [];
-    const userReadCategoryList = reqUser.read || [];
-    const userWriteCategoryList = reqUser.write || [];
+    const userReadCategoryList = user.read || [];
+    const userWriteCategoryList = user.write || [];
 
     userCategoryList = [...userReadCategoryList, ...userWriteCategoryList];
 

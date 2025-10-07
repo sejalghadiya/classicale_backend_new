@@ -100,15 +100,6 @@ export const authenticateAdmin = async (req, res, next) => {
       return res.status(401).json({ error: "Admin not found" });
     }
 
-    // Optional: check if admin is active (if you use this field)
-    if (admin.isDeleted === true) {
-      return res.status(403).json({ error: "Admin account is deleted." });
-    }
-
-    if (admin.isActive === false) {
-      return res.status(423).json({ error: "Admin account is inactive." });
-    }
-
     req.user = admin;
     next();
   } catch (error) {
