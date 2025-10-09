@@ -1,4 +1,6 @@
 import { FeatureRequest } from "../model/featureRequestSchema.js";
+import { UserModel } from "../model/user.js";
+import { sendEmail } from "../utils/sent_email.js";
 
 // Feature Request Controllers
 export const createFeatureRequest = async (req, res) => {
@@ -44,6 +46,8 @@ export const getAllFeatureRequests = async (req, res) => {
           description: 1,
           createdAt: 1,
           updatedAt: 1,
+          status: 1,
+          statusMessage: 1,
           "userId._id": 1,
           "userId.name": 1,
           "userId.email": 1,
@@ -112,6 +116,54 @@ export const deleteFeatureRequest = async (req, res) => {
         .json({ success: false, error: "Feature request not found" });
     }
     res.status(200).json({ success: true, data: {} });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
+
+export const updateFeatureRequestStatus = async (req, res) => {
+  try {
+    const { status, statusMessage } = req.body;
+
+    // Validate status
+    if (!["pending", "accepted", "declined"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid status. Must be 'pending', 'accepted', or 'declined'",
+      });
+    }
+
+    // Validate status message
+    if (!statusMessage || statusMessage.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Status message is required",
+      });
+    }
+
+    const featureRequest = await FeatureRequest.findByIdAndUpdate(
+      req.params.id,
+      { status, statusMessage },
+      { new: true }
+    );
+
+    if (!featureRequest) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Feature request not found" });
+    }
+
+    // sent email to user about status update - TODO
+    const user = await UserModel.findById(featureRequest.userId);
+    if (user) {
+      await sendEmail(
+        user.email,
+        "Feature Request Status Update",
+        `Hello ${user.fName},\n\nYour feature request titled "${featureRequest.title}" has been ${status}.\n\nNote: ${statusMessage}\n\nThank you for your feedback!\n\nBest regards,\nSupport Team`
+      );
+    }
+
+    res.status(200).json({ success: true, data: featureRequest });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
   }

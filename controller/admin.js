@@ -20,6 +20,7 @@ import { sendEmail } from "../utils/sent_email.js"; // Import the sendEmail func
 import { ReportProductModel } from "../model/reoprt_product.js";
 import config from "../utils/config.js";
 import { RatingModel } from "../model/rating.js";
+import { FeatureRequest } from "../model/featureRequestSchema.js";
 
 export const adminLogin = async (req, res) => {
   const { email, password } = req.body;
@@ -1348,6 +1349,19 @@ export const getAllUser = async (req, res) => {
       isActive: false,
     });
 
+    // --- Feature request COUNT ---
+    const totalFeatureRequests = await FeatureRequest.countDocuments();
+    const totalPendingFeatureRequests = await FeatureRequest.countDocuments({
+      status: "pending",
+    });
+    const totalAcceptedFeatureRequests = await FeatureRequest.countDocuments({
+      status: "accepted",
+    });
+    const totalDeclinedFeatureRequests = await FeatureRequest.countDocuments({
+      status: "declined",
+    });
+
+
     // --- FINAL RESPONSE ---
     return res.status(200).json({
       success: true,
@@ -1363,14 +1377,6 @@ export const getAllUser = async (req, res) => {
         Category_α: category1Stats,
         Category_β: category2Stats,
       },
-
-      // unverifiedCounts: {
-      //   "Category A (isPinVerified: false)": categoryAUnverifiedPinCount,
-      //   "Category B (isOtpVerified: false)": categoryBOtpUnverifiedCount,
-      //   "Category 1 (isOtpVerified: false)": category1UnverifiedPinCount,
-      //   "Category 2 (isOtpVerified: false)": category2UnverifiedPinCount,
-      // },
-
       productStats: {
         totalProductCount,
         categoryCounts, // A, B, C, D, E: total count each
@@ -1380,6 +1386,12 @@ export const getAllUser = async (req, res) => {
         totalReportedProducts: validReportCount,
         totalResolveRepoerts,
         totalPendingReports: validReportCount - totalResolveRepoerts,
+      },
+      featureRequestStats: {
+        totalFeatureRequests,
+        totalPendingFeatureRequests,
+        totalAcceptedFeatureRequests,
+        totalDeclinedFeatureRequests,
       },
     });
   } catch (error) {

@@ -5,6 +5,7 @@ import {
   getFeatureRequestById,
   updateFeatureRequest,
   deleteFeatureRequest,
+  updateFeatureRequestStatus,
 } from "../controller/feedback.js";
 import authenticateUser, { authenticateAdmin } from "../auth/middle.js";
 
@@ -20,5 +21,6 @@ router.delete("/:id", deleteFeatureRequest);
 // Admin feature request routes
 router.get("/admin/list", authenticateAdmin, getAllFeatureRequests);
 router.delete("/admin/:id", authenticateAdmin, deleteFeatureRequest);
+router.put("/admin/status/:id", authenticateAdmin, updateFeatureRequestStatus);
 
 export default router;
