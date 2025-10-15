@@ -6,6 +6,7 @@ const ServicesSchema = new mongoose.Schema(
     service_job: {
       type: String,
     },
+    price: { type: [String] },
     service_type: { type: [String] },
     adTitle: { type: [String] },
     description: { type: [String] },
