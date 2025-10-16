@@ -11,7 +11,6 @@ import ProductRouter from "./routes/product.js";
 import CommunicateRouter from "./routes/chat.js";
 import AdminRouter from "./routes/admin.js";
 import Admin from "./model/admin.js";
-import { LocationModel } from "./model/location.js";
 import SendOtpRouter from "./routes/sendOtp.js";
 import path from "path";
 import cors from "cors";
@@ -20,6 +19,8 @@ import { log } from "console";
 import socketInit from "./socket.js";
 import AppVersionRoute from "./routes/app_version.js";
 import FeedbackRouter from "./routes/feedback.js";
+import AboutUsRouter from "./routes/about_us.js";
+import { AboutUs } from "./model/about_us.js";
 
 const app = express();
 app.use(express.json({ limit: "10mb" })); // or even higher like '50mb'
@@ -41,10 +42,57 @@ await mongoose
   .connect(config.database.url)
   .then(async () => {
     console.log("Connected to MongoDB Atlas!");
+    await Promise.all([
+      createAdminIfNotExists(),
+      createDefaultAboutUsIfNotExists(),
+    ]);
   })
   .catch((error) => console.error("Error connecting to MongoDB:", error));
 
-createAdminIfNotExists();
+export async function createDefaultAboutUsIfNotExists() {
+  try {
+    const aboutUsExists = await AboutUs.findOne();
+
+    if (!aboutUsExists) {
+      const defaultAboutUs = new AboutUs({
+        our_mission:
+          "To revolutionize the way people buy and sell products by creating a trusted, sustainable marketplace that empowers communities and promotes conscious consumption.",
+        our_story:
+          "Founded with a vision to make a difference, our journey began with a simple idea: create a platform where quality meets affordability, where every transaction tells a story, and where community values drive commerce.",
+        happy_customer: 1000,
+        products: 500,
+        statisfaction: 95,
+        our_values: [
+          {
+            icon: "trust",
+            title: "Trust & Transparency",
+            description:
+              "Building lasting relationships through honest interactions and clear communication.",
+          },
+          {
+            icon: "community",
+            title: "Community First",
+            description:
+              "Fostering a supportive environment where everyone can thrive and grow together.",
+          },
+          {
+            icon: "quality",
+            title: "Quality Assurance",
+            description:
+              "Maintaining high standards in every aspect of our service delivery.",
+          },
+        ],
+        name: "Classicale",
+        tag_line: "Where Quality Meets Community",
+      });
+
+      await defaultAboutUs.save();
+      console.log("Default About Us created successfully!");
+    }
+  } catch (error) {
+    console.error("Error creating default About Us:", error);
+  }
+}
 
 async function createAdminIfNotExists() {
   try {
@@ -100,6 +148,7 @@ app.use("/api/location", LocationRouter);
 app.use("/api/app-version", AppVersionRoute);
 app.use("/api/feedback", FeedbackRouter);
 app.use("/api/feature-request", FeedbackRouter);
+app.use("/api/about-us", AboutUsRouter);
 
 if (config.nodeEnv === "dev") {
   server.listen(PORT, () => {
