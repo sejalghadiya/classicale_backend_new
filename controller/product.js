@@ -771,20 +771,19 @@ export const addOtherProduct = async (req, res) => {
   }
 };
 
-const MAX_RADIUS = 150 * 1000;
-const STEP_RADIUS = 5 * 1000;
 const MIN_FOUND_PRODUCTS = 1;
 
 export const getAllProducts = async (req, res) => {
   try {
     const { userId } = req.query;
-    const { latitude, longitude, area, city, state, country } = req.headers;
+    const { area, city, state, country } = req.headers;
 
-    if (!userId || !latitude || !longitude || !country) {
+    if (!userId) {
       return res.status(400).json({
-        message: "userId, latitude, longitude, and country are required",
+        message: "userId is required",
       });
     }
+    
 
     const user = await UserModel.findById(userId);
     const userCategory = user?.userCategory;
@@ -807,40 +806,28 @@ export const getAllProducts = async (req, res) => {
     // ------------------------
     // Helper: Build aggregation pipeline
     // ------------------------
-    const buildPipeline = (queryType, radius = null) => {
+    const buildPipeline = () => {
       const pipeline = [];
 
-      if (queryType === "geo" && latitude && longitude && radius) {
-        pipeline.push({
-          $geoNear: {
-            near: {
-              type: "Point",
-              coordinates: [parseFloat(longitude), parseFloat(latitude)],
-            },
-            distanceField: "dist.calculated",
-            maxDistance: radius,
-            query: {
-              isActive: true,
-              isDeleted: false,
-              categories: { $in: categoryFilter },
-            },
-            spherical: true,
-          },
-        });
-      } else {
-        // ✅ Use flattened fields instead of arrayElemAt
-        const baseMatch = {
-          isActive: true,
-          isDeleted: false,
-          categories: { $in: categoryFilter },
-        };
+      // ✅ Base match conditions
+      const baseMatch = {
+        isActive: true,
+        isDeleted: false,
+        categories: { $in: categoryFilter },
+      };
 
-        if (city) baseMatch.cityLatest = city;
-        if (state) baseMatch.stateLatest = state;
-        if (country) baseMatch.countryLatest = country;
-
-        pipeline.push({ $match: baseMatch });
+      // ✅ Implement location hierarchy
+      if (area) {
+        baseMatch.areaLatest = area;
+      } else if (city) {
+        baseMatch.cityLatest = city;
+      } else if (state) {
+        baseMatch.stateLatest = state;
+      } else if (country) {
+        baseMatch.countryLatest = country;
       }
+
+      pipeline.push({ $match: baseMatch });
 
       // Lookup user (with filter + projection)
       pipeline.push({
@@ -905,54 +892,23 @@ export const getAllProducts = async (req, res) => {
     };
 
     // ------------------------
-    // Search: Priority 1 (Geo)
+    // Search using location hierarchy
     // ------------------------
-    if (area) {
-      for (
-        let radius = STEP_RADIUS;
-        radius <= MAX_RADIUS;
-        radius += STEP_RADIUS
-      ) {
-        let tempProducts = {};
-        let totalFound = 0;
+    let tempProducts = {};
+    let totalFound = 0;
 
-        for (const [key, Model] of Object.entries(productModels)) {
-          const pipeline = buildPipeline("geo", radius);
-          const results = await Model.aggregate(pipeline);
-          if (results.length > 0) {
-            tempProducts[key] = results;
-            totalFound += results.length;
-          }
-        }
-
-        if (totalFound >= MIN_FOUND_PRODUCTS) {
-          allProducts = tempProducts;
-          found = true;
-          break; // ✅ stop after finding enough products
-        }
+    for (const [key, Model] of Object.entries(productModels)) {
+      const pipeline = buildPipeline();
+      const results = await Model.aggregate(pipeline);
+      if (results.length > 0) {
+        tempProducts[key] = results;
+        totalFound += results.length;
       }
     }
 
-    // ------------------------
-    // Search: Priority 2 (Location fallback)
-    // ------------------------
-    if (!found) {
-      let tempProducts = {};
-      let totalFound = 0;
-
-      for (const [key, Model] of Object.entries(productModels)) {
-        const pipeline = buildPipeline("location");
-        const results = await Model.aggregate(pipeline);
-        if (results.length > 0) {
-          tempProducts[key] = results;
-          totalFound += results.length;
-        }
-      }
-
-      if (totalFound >= MIN_FOUND_PRODUCTS) {
-        allProducts = tempProducts;
-        found = true;
-      }
+    if (totalFound >= MIN_FOUND_PRODUCTS) {
+      allProducts = tempProducts;
+      found = true;
     }
 
     return res.status(200).json({

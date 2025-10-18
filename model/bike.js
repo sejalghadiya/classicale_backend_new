@@ -38,6 +38,7 @@ const BikeSchema = new mongoose.Schema(
       coordinates: { type: [Number], default: [0, 0] }, // [longitude, latitude]
     },
     view_count: { type: [mongoose.Schema.Types.ObjectId], ref: "user" },
+    areaLatest: { type: String },
     stateLatest: { type: String },
     cityLatest: { type: String },
     countryLatest: { type: String },
@@ -56,9 +57,15 @@ BikeSchema.index({ categories: 1, location: "2dsphere" });
 BikeSchema.index({ userId: 1 });
 
 // Indexes for location fallback filtering
-BikeSchema.index({ countryLatest: 1, stateLatest: 1, cityLatest: 1 });
+BikeSchema.index({
+  countryLatest: 1,
+  stateLatest: 1,
+  cityLatest: 1,
+  areaLatest: 1,
+});
 
 BikeSchema.pre("save", function (next) {
+  if (this.area?.length) this.areaLatest = this.area[this.area.length - 1];
   if (this.state?.length) this.stateLatest = this.state[this.state.length - 1];
   if (this.city?.length) this.cityLatest = this.city[this.city.length - 1];
   if (this.country?.length)

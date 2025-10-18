@@ -25,6 +25,7 @@ const JobSchema = new mongoose.Schema(
     state: { type: [String] },
     pincode: { type: [String] },
     country: { type: [String] },
+    areaLatest: { type: String },
     stateLatest: { type: String },
     cityLatest: { type: String },
     countryLatest: { type: String },
@@ -65,9 +66,11 @@ JobSchema.index({
   countryLatest: 1,
   stateLatest: 1,
   cityLatest: 1,
+  areaLatest: 1,
 });
 
 JobSchema.pre("save", function (next) {
+  if (this.area?.length) this.areaLatest = this.area[this.area.length - 1];
   if (this.state?.length) this.stateLatest = this.state[this.state.length - 1];
   if (this.city?.length) this.cityLatest = this.city[this.city.length - 1];
   if (this.country?.length)
